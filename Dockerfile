@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Stop any auto-started cluster (clean PID for container start)
+RUN pg_ctlcluster 16 main stop 2>/dev/null || true
+
 WORKDIR /app
 
 # Copy production deps from build
