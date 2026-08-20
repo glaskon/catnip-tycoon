@@ -303,20 +303,36 @@ function renderUpgrades() {
     const name = i18n.t(upg.nameKey, upg.id);
     const desc = i18n.t(upg.descKey, '');
     const currencyIcon = upg.currency === 'fish' ? '🐟' : '🌿';
-    const canAfford = upg.currency === 'fish'
-      ? game.fish >= upg.cost
-      : game.catnip >= upg.cost;
 
-    html += `<div class="card${upg.purchased ? ' unlocked' : ''}">`;
+    const isStackable = upg.type === 'stackable';
+    const isPurchased = isStackable ? upg.level > 0 : upg.purchased;
+    const cost = isStackable ? upg.currentCost : upg.cost;
+    const canAfford = upg.currency === 'fish'
+      ? game.fish >= cost
+      : game.catnip >= cost;
+
+    let cardClass = '';
+    if (isStackable && upg.level > 0) cardClass = 'unlocked';
+    else if (isPurchased) cardClass = 'unlocked';
+    
+    html += `<div class="card${cardClass}">`;
     html += `<div class="card-info">`;
     html += `<div class="card-name">⬆️ ${name}</div>`;
     html += `<div class="card-desc">${desc}</div>`;
     html += `</div>`;
 
-    if (upg.purchased) {
+    if (isStackable) {
+      if (upg.level > 0) {
+        html += `<div class="card-cost" style="color: var(--cat-orange);">Level ${upg.level}</div>`;
+      }
+      html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
+      html += `<button class="btn btn-primary btn-sm card-btn" 
+                onclick="buyUpgrade(${i})" 
+                ${!canAfford ? 'disabled' : ''}>Level ${upg.level + 1}</button>`;
+    } else if (isPurchased) {
       html += `<div class="card-cost" style="color: var(--success)">✅ ${i18n.t('upgrades.purchased')}</div>`;
     } else {
-      html += `<div class="card-cost">${currencyIcon} ${formatNumber(upg.cost)}</div>`;
+      html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
       html += `<button class="btn btn-primary btn-sm card-btn" 
                 onclick="buyUpgrade(${i})" 
                 ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;

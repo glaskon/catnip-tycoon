@@ -23,9 +23,12 @@ const game = {
   // --- Collections ---
   // Cats: [{id, nameKey, count, baseProduction, cost, unlocked}]
   cats: [],
-  // Upgrades: [{id, nameKey, effect, cost, purchased}]
+  // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
   upgrades: [],
   // Achievements: tracked in achievements.js
+
+  // --- Quantum Karma timer ---
+  _quantumTimer: 0,
 
   // --- User ---
   user: null,
@@ -56,11 +59,28 @@ const CAT_DEFINITIONS = [
 // Upgrade definitions
 // ============================================================
 const UPGRADE_DEFINITIONS = [
-  { id: 'karma', nameKey: 'upgrades.karma', descKey: 'upgrades.karmaDesc', effect: 'fish2x', cost: 100, currency: 'fish' },
-  { id: 'autoclicker', nameKey: 'upgrades.autoclicker', descKey: 'upgrades.autoclickerDesc', effect: 'autoClick', cost: 500, currency: 'fish' },
-  { id: 'miska', nameKey: 'upgrades.miska', descKey: 'upgrades.miskaDesc', effect: 'click2x', cost: 2000, currency: 'fish' },
-  { id: 'buda', nameKey: 'upgrades.buda', descKey: 'upgrades.budaDesc', effect: 'cats1.5x', cost: 10000, currency: 'fish' },
-  { id: 'karmnik', nameKey: 'upgrades.karmnik', descKey: 'upgrades.karmnikDesc', effect: 'catnip2x', cost: 10, currency: 'catnip' },
+  // Existing — once purchases
+  { id: 'karma', nameKey: 'upgrades.karma', descKey: 'upgrades.karmaDesc', effect: 'fish2x', cost: 100, currency: 'fish', type: 'once' },
+  { id: 'autoclicker', nameKey: 'upgrades.autoclicker', descKey: 'upgrades.autoclickerDesc', effect: 'autoClick', cost: 500, currency: 'fish', type: 'once' },
+  { id: 'miska', nameKey: 'upgrades.miska', descKey: 'upgrades.miskaDesc', effect: 'click2x', cost: 2000, currency: 'fish', type: 'once' },
+  { id: 'buda', nameKey: 'upgrades.buda', descKey: 'upgrades.budaDesc', effect: 'cats1.5x', cost: 10000, currency: 'fish', type: 'once' },
+  { id: 'karmnik', nameKey: 'upgrades.karmnik', descKey: 'upgrades.karmnikDesc', effect: 'catnip2x', cost: 10, currency: 'catnip', type: 'once' },
+
+  // New — fish upgrades
+  { id: 'fishclick', nameKey: 'upgrades.fishclick', descKey: 'upgrades.fishclickDesc', effect: 'fishClick', baseCost: 10000, currency: 'fish', type: 'stackable', costGrowth: 5 },
+  { id: 'catspeed', nameKey: 'upgrades.catspeed', descKey: 'upgrades.catspeedDesc', effect: 'catSpeed', baseCost: 100000, currency: 'fish', type: 'stackable', costGrowth: 2.5 },
+  { id: 'megakarma', nameKey: 'upgrades.megakarma', descKey: 'upgrades.megakarmaDesc', effect: 'megaKarma', cost: 100000, currency: 'fish', type: 'once' },
+  { id: 'clickcrit', nameKey: 'upgrades.clickcrit', descKey: 'upgrades.clickcritDesc', effect: 'clickCrit', cost: 1000000, currency: 'fish', type: 'once' },
+  { id: 'luckypaw', nameKey: 'upgrades.luckypaw', descKey: 'upgrades.luckypawDesc', effect: 'luckyPaw', cost: 5000000, currency: 'fish', type: 'once' },
+  { id: 'quantumkarma', nameKey: 'upgrades.quantumkarma', descKey: 'upgrades.quantumkarmaDesc', effect: 'quantumKarma', cost: 100000000, currency: 'fish', type: 'once' },
+
+  // New — catnip upgrades
+  { id: 'superkarmnik', nameKey: 'upgrades.superkarmnik', descKey: 'upgrades.superkarmnikDesc', effect: 'superKarmnik', cost: 50, currency: 'catnip', type: 'once' },
+  { id: 'catnipclick', nameKey: 'upgrades.catnipclick', descKey: 'upgrades.catnipclickDesc', effect: 'catnipClick', cost: 10, currency: 'catnip', type: 'once' },
+  { id: 'catnipmastery', nameKey: 'upgrades.catnipmastery', descKey: 'upgrades.catnipmasteryDesc', effect: 'catnipMastery', cost: 100, currency: 'catnip', type: 'once' },
+  { id: 'elixirmastery', nameKey: 'upgrades.elixirmastery', descKey: 'upgrades.elixirmasteryDesc', effect: 'elixirMastery', cost: 25, currency: 'catnip', type: 'once' },
+  { id: 'prestigeBoost', nameKey: 'upgrades.prestigeBoost', descKey: 'upgrades.prestigeBoostDesc', effect: 'prestigeBoost', cost: 200, currency: 'catnip', type: 'once' },
+  { id: 'diamondluck', nameKey: 'upgrades.diamondluck', descKey: 'upgrades.diamondluckDesc', effect: 'diamondLuck', cost: 30, currency: 'catnip', type: 'once' },
 ];
 
 // ============================================================
@@ -86,10 +106,18 @@ function initGame() {
   }));
 
   // Build upgrades array from definitions
-  game.upgrades = UPGRADE_DEFINITIONS.map(def => ({
-    ...def,
-    purchased: false,
-  }));
+  game.upgrades = UPGRADE_DEFINITIONS.map(def => {
+    if (def.type === 'stackable') {
+      return {
+        ...def,
+        level: 0,
+        get currentCost() {
+          return Math.floor(def.baseCost * Math.pow(def.costGrowth, this.level));
+        },
+      };
+    }
+    return { ...def, purchased: false };
+  });
 }
 
 // ============================================================
@@ -115,7 +143,6 @@ function recalcFPS() {
   let base = 0;
   let hasWizardCat = false;
   let hasFeniks = false;
-  let hasGoddess = false;
 
   for (const cat of game.cats) {
     base += cat.production;
@@ -143,9 +170,17 @@ function recalcFPS() {
     }
   }
 
+  // CatSpeed: stackable, +10% per level
+  const csLevel = getUpgradeLevel('catspeed');
+  if (csLevel > 0) {
+    base *= (1 + csLevel * 0.1);
+  }
+
   // Upgrades that affect FPS
   if (hasUpgrade('karma')) base *= 2;
   if (hasUpgrade('buda')) base *= 1.5;
+  if (hasUpgrade('megakarma')) base *= 5;
+  if (hasUpgrade('catnipmastery')) base *= 2;
 
   // Prestige tier bonuses
   if (game.prestigeCount >= 5) base *= 2; // Tier 3: Divine artifacts
@@ -166,13 +201,27 @@ function recalcFPS() {
     base *= 10;
   }
 
+  // Quantum Karma active: ×10
+  if (game._quantumActive) {
+    base *= 10;
+  }
+
   game.fishPerSecond = base;
 }
 
-// Check if an upgrade has been purchased
+// Check if an upgrade has been purchased (once-type) or has levels (stackable)
 function hasUpgrade(upgradeId) {
   const upg = game.upgrades.find(u => u.id === upgradeId);
-  return upg && upg.purchased;
+  if (!upg) return false;
+  if (upg.type === 'stackable') return upg.level > 0;
+  return upg.purchased;
+}
+
+// Get current level of a stackable upgrade (0 if not owned or once-type)
+function getUpgradeLevel(upgradeId) {
+  const upg = game.upgrades.find(u => u.id === upgradeId);
+  if (!upg || upg.type !== 'stackable') return 0;
+  return upg.level;
 }
 
 // Get current cat cost (considering how many already owned)
@@ -189,11 +238,42 @@ function getCatCost(catIndex) {
 function clickCat(event) {
   let clickValue = game.fishPerClick;
 
+  // FishClick+ stackable: +1 fish/click per level
+  clickValue += getUpgradeLevel('fishclick');
+
   // Upgrade: Golden Bowl (2x click multiplier)
   if (hasUpgrade('miska')) clickValue *= 2;
 
+  // ClickCrit: 10% chance for ×10
+  if (hasUpgrade('clickcrit') && Math.random() < 0.1) {
+    clickValue *= 10;
+  }
+
+  // LuckyPaw: +0.1 fish/click per cat owned
+  if (hasUpgrade('luckypaw')) {
+    const totalCats = game.cats.reduce((sum, c) => sum + c.count, 0);
+    clickValue += totalCats * 0.1;
+  }
+
+  // Round to avoid floating point issues
+  if (clickValue < 1) clickValue = Math.round(clickValue * 100) / 100;
+
   addFish(clickValue);
   game.clickCount++;
+
+  // CatnipClick: +0.1 catnip per click
+  if (hasUpgrade('catnipclick')) {
+    game.catnip += 0.1;
+  }
+
+  // DiamondLuck: +5% chance on click for 1 diamond (base 1% chance)
+  if (hasUpgrade('diamondluck')) {
+    if (Math.random() < 0.05) {
+      game.diamonds += 1;
+    }
+  } else if (Math.random() < 0.01) {
+    game.diamonds += 1;
+  }
 
   // Bounce animation on cat canvas
   const catCanvas = document.getElementById('catCanvas');
@@ -259,9 +339,13 @@ function buyCat(index) {
 // Buy an upgrade by index
 function buyUpgrade(index) {
   const upg = game.upgrades[index];
-  if (!upg || upg.purchased) return false;
+  if (!upg) return false;
 
-  const cost = upg.cost;
+  // Once-type: can't buy if already purchased
+  if (upg.type === 'once' && upg.purchased) return false;
+
+  // Determine cost
+  const cost = upg.type === 'stackable' ? upg.currentCost : upg.cost;
   const currency = upg.currency;
 
   // Check if player can afford
@@ -272,7 +356,12 @@ function buyUpgrade(index) {
   if (currency === 'fish') game.fish -= cost;
   else game.catnip -= cost;
 
-  upg.purchased = true;
+  // Apply purchase
+  if (upg.type === 'stackable') {
+    upg.level++;
+  } else {
+    upg.purchased = true;
+  }
 
   // Apply upgrade effect
   applyUpgradeEffect(upg.id);
@@ -285,22 +374,27 @@ function buyUpgrade(index) {
 
 // Apply the effect of a purchased upgrade
 function applyUpgradeEffect(upgradeId) {
+  // Most effects are handled inline in their respective functions.
+  // This function exists for effects that need one-time application
+  // or for save/load re-application.
   switch (upgradeId) {
-    case 'karma':
-      // 2x fish/s — handled in recalcFPS()
-      break;
-    case 'autoclicker':
-      // Auto 1 click/s — handled in gameLoop
-      break;
-    case 'miska':
-      // 2x click multiplier — handled in clickCat()
-      break;
-    case 'buda':
-      // 1.5x all cat production — handled in recalcFPS()
-      break;
-    case 'karmnik':
-      // 2x catnip from prestige — handled in prestige()
-      break;
+    case 'karma':      break; // handled in recalcFPS()
+    case 'autoclicker': break; // handled in gameLoop
+    case 'miska':      break; // handled in clickCat()
+    case 'buda':       break; // handled in recalcFPS()
+    case 'karmnik':    break; // handled in prestige()
+    case 'fishclick':  break; // handled in clickCat()
+    case 'catspeed':   break; // handled in recalcFPS()
+    case 'megakarma':  break; // handled in recalcFPS()
+    case 'clickcrit':  break; // handled in clickCat()
+    case 'luckypaw':   break; // handled in clickCat()
+    case 'quantumkarma': break; // handled in gameLoop
+    case 'superkarmnik': break; // handled in gameLoop
+    case 'catnipclick': break; // handled in clickCat()
+    case 'catnipmastery': break; // handled in recalcFPS()
+    case 'elixirmastery': break; // handled in tickElixirs
+    case 'prestigeBoost': break; // handled in prestige()
+    case 'diamondluck': break; // handled in clickCat()
   }
 }
 
@@ -315,9 +409,11 @@ function getCatnipNeeded() {
 
 // Calculate how much catnip the player would earn from prestige
 function calculatePrestigeReward() {
-  const catnipGain = Math.floor(Math.sqrt(game.totalFishEarned) / 100);
+  let catnipGain = Math.floor(Math.sqrt(game.totalFishEarned) / 100);
   // Upgrade: Feeder gives 2x catnip
-  if (hasUpgrade('karmnik')) return catnipGain * 2;
+  if (hasUpgrade('karmnik')) catnipGain *= 2;
+  // Upgrade: PrestigeBoost gives +25%
+  if (hasUpgrade('prestigeBoost')) catnipGain = Math.floor(catnipGain * 1.25);
   return catnipGain;
 }
 
@@ -343,6 +439,14 @@ function prestige() {
     cashbackCatnip = Math.floor(game.totalFishEarned * 0.1 / 100);
   }
 
+  // Save stackable upgrade levels before reset
+  const oldStackableLevels = {};
+  for (const upg of game.upgrades) {
+    if (upg.type === 'stackable' && upg.level > 0) {
+      oldStackableLevels[upg.id] = upg.level;
+    }
+  }
+
   // Reset everything except catnip, diamonds, prestigeCount
   game.fish = 0;
   game.fishPerClick = 1;
@@ -364,15 +468,23 @@ function prestige() {
     }
   });
 
-  // Reset upgrades — keep preserved upgrade if Tier 8 (75+)
+  // Reset upgrades — keep preserved upgrade if Tier 8 (75+), keep stackable levels
   game.upgrades.forEach(u => {
     if (oldPreservedUpgradeId && u.id === oldPreservedUpgradeId && game.prestigeCount >= 75) {
       u.purchased = true;
       applyUpgradeEffect(u.id);
-    } else {
+    } else if (u.type === 'stackable' && oldStackableLevels[u.id]) {
+      // Stackable upgrades keep their levels through prestige
+      u.level = oldStackableLevels[u.id];
+    } else if (u.type === 'once') {
       u.purchased = false;
     }
+    // Stackable upgrades with no level stay at 0 (no-op)
   });
+
+  // Reset quantum karma state
+  game._quantumTimer = 0;
+  game._quantumActive = false;
 
   recalcFPS();
 
@@ -409,12 +521,33 @@ function gameLoop() {
     if (game.prestigeCount >= 10) {
       catnipRate += (game.prestigeCount - 9) * 0.005; // scales: +0.005/s per prestige past 10
     }
+    // SuperKarmnik: 4x catnip generation
+    if (hasUpgrade('superkarmnik')) {
+      catnipRate *= 4;
+    }
     game.catnip += catnipRate * delta * game.speedMultiplier;
   }
 
   // Tier 4+: tick elixirs
   if (typeof tickElixirs === 'function') {
     tickElixirs(delta);
+  }
+
+  // Quantum Karma: ×10 fish/s for 5s every 60s
+  if (hasUpgrade('quantumkarma')) {
+    game._quantumTimer += delta;
+    if (game._quantumTimer >= 60 && !game._quantumActive) {
+      game._quantumActive = true;
+      game._quantumTimer = 0;
+      recalcFPS();
+      showToast('🌀 Quantum Karma active! ×10 fish/s for 5s');
+      setTimeout(() => {
+        game._quantumActive = false;
+        recalcFPS();
+        showToast('🌀 Quantum Karma expired');
+        render();
+      }, 5000);
+    }
   }
 
   // Update UI
@@ -441,7 +574,11 @@ async function saveGame() {
       clickCount: game.clickCount,
       totalCatsBought: game.totalCatsBought,
       cats: game.cats.map(c => ({ id: c.id, count: c.count })),
-      upgrades: game.upgrades.map(u => ({ id: u.id, purchased: u.purchased })),
+      upgrades: game.upgrades.map(u => ({
+        id: u.id,
+        purchased: u.purchased,
+        level: u.level,
+      })),
     };
     await api.saveGameState(state);
   } catch (err) {
@@ -490,8 +627,17 @@ async function loadGame() {
     if (state.upgrades) {
       for (const savedUpg of state.upgrades) {
         const upg = game.upgrades.find(u => u.id === savedUpg.id);
-        if (upg && savedUpg.purchased) {
+        if (!upg) continue;
+
+        // Restore once-type
+        if (savedUpg.purchased && upg.type === 'once') {
           upg.purchased = true;
+          applyUpgradeEffect(upg.id);
+        }
+
+        // Restore stackable level
+        if (savedUpg.level && upg.type === 'stackable') {
+          upg.level = savedUpg.level;
           applyUpgradeEffect(upg.id);
         }
       }
@@ -527,4 +673,5 @@ window.addFish = addFish;
 window.spendFish = spendFish;
 window.recalcFPS = recalcFPS;
 window.hasUpgrade = hasUpgrade;
+window.getUpgradeLevel = getUpgradeLevel;
 window.getCatCost = getCatCost;

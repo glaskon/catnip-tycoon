@@ -76,7 +76,11 @@ const ELIXIR_RATE_PER_PRESTIGE = 1 / 60; // 1 elixir per minute per prestige ove
 function tickElixirs(delta) {
   if (game.prestigeCount < 10) return;
   
-  const rate = (game.prestigeCount - 9) * ELIXIR_RATE_PER_PRESTIGE; // e.g. prestige 10 = 1/min, 20 = 11/min
+  let rate = (game.prestigeCount - 9) * ELIXIR_RATE_PER_PRESTIGE;
+  // ElixirMastery: +50% elixir rate
+  if (typeof hasUpgrade === 'function' && hasUpgrade('elixirmastery')) {
+    rate *= 1.5;
+  }
   game.elixirs += rate * delta;
 }
 
