@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Catnip Tycoon</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ===== Background Canvas (cat paws, fish floating) ===== -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- ===== Main Game Layout ===== -->
+  <div id="app">
+
+    <!-- ----- Top Bar: User info, login/register button ----- -->
+    <header id="topBar">
+      <span id="userStatus">🐱 Not logged in</span>
+      <button id="btnAuth" class="btn btn-sm">Login / Register</button>
+    </header>
+
+    <!-- ----- Main Content Area (Mobile: single column, Desktop: sidebar + panels) ----- -->
+    <div id="mainLayout">
+
+      <!-- ---- Sidebar Navigation (bottom bar on mobile, left sidebar on desktop) ---- -->
+      <nav id="sidebar">
+        <button class="nav-btn active" data-panel="main" title="Main">🏠</button>
+        <button class="nav-btn" data-panel="cats" title="Cats">🐱</button>
+        <button class="nav-btn" data-panel="upgrades" title="Upgrades">⬆️</button>
+        <button class="nav-btn" data-panel="prestige" title="Prestige">✨</button>
+        <button class="nav-btn" data-panel="shop" title="Shop">🛒</button>
+        <button class="nav-btn" data-panel="achievements" title="Achievements">🏆</button>
+        <button class="nav-btn admin-only" data-panel="admin" title="Admin">⚙️</button>
+      </nav>
+
+      <!-- ---- Panel Container ---- -->
+      <main id="panelContainer">
+
+        <!-- == Main Game Panel == -->
+        <section id="panel-main" class="panel active">
+          <div id="clickerArea">
+            <canvas id="catCanvas" width="200" height="200"></canvas>
+            <p id="clickHint">🐟 Click the cat!</p>
+          </div>
+          <div id="statsBar">
+            <div class="stat">
+              <span class="stat-icon">🐟</span>
+              <span class="stat-label">Fish</span>
+              <span class="stat-value" id="fishCount">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">⚡</span>
+              <span class="stat-label">Fish/s</span>
+              <span class="stat-value" id="fishPerSec">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">🌿</span>
+              <span class="stat-label">Catnip</span>
+              <span class="stat-value" id="catnipCount">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-icon">💎</span>
+              <span class="stat-label">Diamonds</span>
+              <span class="stat-value" id="diamondCount">0</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- == Cats Panel == -->
+        <section id="panel-cats" class="panel">
+          <h2>🐱 Your Cats</h2>
+          <div id="catList"></div>
+        </section>
+
+        <!-- == Upgrades Panel == -->
+        <section id="panel-upgrades" class="panel">
+          <h2>⬆️ Upgrades</h2>
+          <div id="upgradeList"></div>
+        </section>
+
+        <!-- == Prestige Panel == -->
+        <section id="panel-prestige" class="panel">
+          <h2>✨ Prestige</h2>
+          <div id="prestigeContent"></div>
+        </section>
+
+        <!-- == Shop Panel == -->
+        <section id="panel-shop" class="panel">
+          <h2>🛒 Shop</h2>
+          <div id="shopContent"></div>
+        </section>
+
+        <!-- == Achievements Panel == -->
+        <section id="panel-achievements" class="panel">
+          <h2>🏆 Achievements</h2>
+          <div id="achievementList"></div>
+        </section>
+
+        <!-- == Admin Panel (hidden for non-admins) == -->
+        <section id="panel-admin" class="panel">
+          <h2>⚙️ Admin Panel</h2>
+          <div id="adminContent"></div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== Modals ===== -->
+
+  <!-- Auth Modal (Login / Register) -->
+  <div id="modalAuth" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" data-modal="modalAuth">&times;</span>
+      <h2 id="authTitle">Login</h2>
+      <form id="authForm">
+        <input type="email" id="authEmail" placeholder="Email" required>
+        <input type="password" id="authPassword" placeholder="Password" minlength="6" required>
+        <button type="submit" class="btn btn-primary" id="authSubmit">Login</button>
+        <button type="button" class="btn btn-link" id="authToggle">Don't have an account? Register</button>
+      </form>
+      <p id="authError" class="error-msg"></p>
+    </div>
+  </div>
+
+  <!-- Achievement Unlock Toast -->
+  <div id="achievementToast" class="toast">🏆 Achievement Unlocked!</div>
+
+  <!-- ===== Scripts (vanilla JS, no frameworks) ===== -->
+  <script src="/js/i18n.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/game.js"></script>
+  <script src="/js/render.js"></script>
+  <script src="/js/prestige.js"></script>
+  <script src="/js/shop.js"></script>
+  <script src="/js/achievements.js"></script>
+  <script src="/js/main.js"></script>
+
+</body>
+</html>

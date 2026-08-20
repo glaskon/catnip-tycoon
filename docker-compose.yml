@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PORT=8000
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://ct_user:ct_password@db:5432/catnip_tycoon
+      - JWT_SECRET=dev-secret-change-in-production
+      - ADMIN_EMAIL=lukasz@ww.pl
+    volumes:
+      - ./public:/app/public
+      - ./server:/app/server
+    command: npx nodemon server/index.js
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: catnip_tycoon
+      POSTGRES_USER: ct_user
+      POSTGRES_PASSWORD: ct_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ct_user -d catnip_tycoon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
