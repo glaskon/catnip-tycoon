@@ -1,7 +1,7 @@
 // Core game state and mechanics for Catnip Tycoon
 const game = {
   // --- Resources ---
-  fish: 10,  // Starter fish for first cat purchase
+  fish: 25,  // Starter fish
   fishPerClick: 1,
   fishPerSecond: 0,
   catnip: 0,
@@ -35,7 +35,7 @@ const game = {
 // Cat definitions
 // ============================================================
 const CAT_DEFINITIONS = [
-  { id: 'dachowiec', nameKey: 'cats.dachowiec', baseCost: 10, baseProduction: 0.5, costGrowth: 1.15 },
+  { id: 'dachowiec', nameKey: 'cats.dachowiec', baseCost: 5, baseProduction: 0.5, costGrowth: 1.15 },
   { id: 'rudzielec', nameKey: 'cats.rudzielec', baseCost: 50, baseProduction: 2, costGrowth: 1.15 },
   { id: 'syjamski', nameKey: 'cats.syjamski', baseCost: 200, baseProduction: 8, costGrowth: 1.15 },
   { id: 'perski', nameKey: 'cats.perski', baseCost: 1000, baseProduction: 40, costGrowth: 1.15 },
@@ -356,7 +356,12 @@ async function loadGame() {
 
   try {
     const state = await api.loadGameState();
-    if (!state || !state.fish === undefined) return; // Fresh save or corrupt data
+    if (!state || state.fish === undefined) return; // Fresh save — keep starter fish
+
+    // Check if this is a real save or just a default empty record
+    if (state.totalFishEarned === undefined || state.totalCatsBought === undefined) {
+      return; // Empty skeleton record — keep starter
+    }
 
     // Restore game state
     game.fish = state.fish || 0;

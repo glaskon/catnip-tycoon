@@ -18,21 +18,9 @@ router.get('/', authMiddleware, async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      // No save exists yet — return a default empty state
+      // No save exists yet — return minimal indicator so frontend keeps starter
       return res.json({
-        game_state: {
-          fish: 0,
-          fishPerClick: 1,
-          fishPerSecond: 0,
-          catnip: 0,
-          diamonds: 0,
-          totalFishEarned: 0,
-          prestigeCount: 0,
-          cats: [],
-          upgrades: [],
-          clickCount: 0,
-          totalCatsBought: 0,
-        },
+        game_state: { _fresh: true },
         updated_at: new Date().toISOString(),
       });
     }
