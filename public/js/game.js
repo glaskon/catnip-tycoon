@@ -358,9 +358,9 @@ async function loadGame() {
     const state = await api.loadGameState();
     if (!state || state.fish === undefined) return; // Fresh save — keep starter fish
 
-    // Check if this is a real save or just a default empty record
-    if (state.totalFishEarned === undefined || state.totalCatsBought === undefined) {
-      return; // Empty skeleton record — keep starter
+    // Detect empty/default save (no actual progress yet)
+    if (!state.totalFishEarned && !state.totalCatsBought && !state.prestigeCount) {
+      return; // Keep starter fish — no real progress on server
     }
 
     // Restore game state
