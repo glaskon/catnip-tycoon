@@ -20,8 +20,10 @@ const game = {
   clickCount: 0,
   totalCatsBought: 0,
 
+  // --- Offline time ---
+  offlineTimeMinutes: 120, // Default 2 hours — can be extended via shop
+
   // --- Collections ---
-  // Cats: [{id, nameKey, count, baseProduction, cost, unlocked}]
   cats: [],
   // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
   upgrades: [],
@@ -266,12 +268,10 @@ function clickCat(event) {
     game.catnip += 0.1;
   }
 
-  // DiamondLuck: +5% chance on click for 1 diamond (base 1% chance)
-  if (hasUpgrade('diamondluck')) {
-    if (Math.random() < 0.05) {
-      game.diamonds += 1;
-    }
-  } else if (Math.random() < 0.01) {
+  // Diamond drops: base 1/10000 (0.01%) per click
+  // DiamondLuck upgrade: 10x drop rate → 1/1000 (0.1%)
+  const diamondDropRate = hasUpgrade('diamondluck') ? 0.001 : 0.0001;
+  if (Math.random() < diamondDropRate) {
     game.diamonds += 1;
   }
 
@@ -573,6 +573,7 @@ async function saveGame() {
       preservedUpgradeId: game.preservedUpgradeId,
       clickCount: game.clickCount,
       totalCatsBought: game.totalCatsBought,
+      offlineTimeMinutes: game.offlineTimeMinutes,
       cats: game.cats.map(c => ({ id: c.id, count: c.count })),
       upgrades: game.upgrades.map(u => ({
         id: u.id,
@@ -591,7 +592,10 @@ async function loadGame() {
   if (!api.token) return;
 
   try {
-    const state = await api.loadGameState();
+    const result = await api.loadGameState();
+    const state = result.gameState;
+    const updatedAt = result.updatedAt;
+
     if (!state || state._fresh) {
       // No save on server yet — start with defaults (already set in game object)
       console.log('[Game] Fresh account — starting from zero');
@@ -614,6 +618,39 @@ async function loadGame() {
     game.preservedUpgradeId = state.preservedUpgradeId || null;
     game.clickCount = state.clickCount || 0;
     game.totalCatsBought = state.totalCatsBought || 0;
+    game.offlineTimeMinutes = state.offlineTimeMinutes || 120;
+
+    // Calculate offline earnings if we have a last save timestamp
+    if (updatedAt) {
+      const lastSave = new Date(updatedAt).getTime();
+      const now = Date.now();
+      const offlineSeconds = Math.min(
+        (now - lastSave) / 1000,
+        game.offlineTimeMinutes * 60
+      );
+
+      if (offlineSeconds > 30) { // Only show if more than 30s offline
+        // Calculate what would have been earned during offline time
+        // Use FPS at time of save (loaded from state)
+        const fps = state.fishPerSecond || 0;
+        const catnipRate = state.prestigeCount >= 3 ? 0.01 : 0;
+        const offlineFish = fps * offlineSeconds;
+        const offlineCatnip = catnipRate * offlineSeconds;
+
+        // Show offline earnings popup — delay slightly to let UI load
+        setTimeout(() => {
+          const hours = Math.floor(offlineSeconds / 3600);
+          const mins = Math.floor((offlineSeconds % 3600) / 60);
+          const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+          
+          showOfflineEarnings(timeStr, offlineFish, offlineCatnip);
+        }, 1000);
+
+        // Award offline earnings
+        if (offlineFish > 0) addFish(offlineFish);
+        if (offlineCatnip > 0) game.catnip += offlineCatnip;
+      }
+    }
 
     // Restore cats
     if (state.cats) {
@@ -655,6 +692,34 @@ function startGameLoops() {
   game.lastTick = Date.now();
   game.gameLoopInterval = setInterval(gameLoop, 100);
   game.autoSaveInterval = setInterval(saveGame, 30000); // Auto-save every 30 seconds
+}
+
+// Show offline earnings popup
+function showOfflineEarnings(timeAway, fish, catnip) {
+  // Remove existing popup if any
+  const existing = document.getElementById('offlinePopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'offlinePopup';
+  popup.innerHTML = `
+    <div style="background: var(--bg-secondary); border: 2px solid var(--cat-orange); border-radius: var(--border-radius); padding: 20px; text-align: center; max-width: 360px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+      <h3 style="color: var(--cat-orange); margin-bottom: 8px;">🐱 Welcome Back!</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary);">You were away for <b>${timeAway}</b></p>
+      <div style="margin: 12px 0;">
+        <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);">${formatNumber(Math.floor(fish))}</b> fish earned</p>
+        ${catnip > 0 ? `<p style="font-size: 1rem;">🌿 <b style="color: var(--cat-orange);">${formatNumber(Math.floor(catnip))}</b> catnip earned</p>` : ''}
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-muted);">Offline time: ${formatNumber(game.offlineTimeMinutes / 60)}h / ${game.offlineTimeMinutes} min max</p>
+      <button class="btn btn-primary" onclick="document.getElementById('offlinePopup').remove()" style="margin-top: 8px;">Collect</button>
+    </div>
+  `;
+
+  // Style and position as a modal overlay
+  popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:9998;';
+  popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
+
+  document.body.appendChild(popup);
 }
 
 // Expose game to global scope

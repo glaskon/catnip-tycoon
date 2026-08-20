@@ -367,6 +367,9 @@ function render() {
     case 'panel-achievements':
       if (typeof renderAchievements === 'function') renderAchievements();
       break;
+    case 'panel-leaderboard':
+      if (typeof renderLeaderboard === 'function') renderLeaderboard();
+      break;
   }
 }
 

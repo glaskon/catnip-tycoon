@@ -74,6 +74,22 @@ const SHOP_ITEMS = [
     cost: 100,
     currency: 'diamonds',
   },
+  {
+    id: 'offline_30min_catnip',
+    name: '+30min Offline Time',
+    icon: '⏰',
+    desc: 'Extends offline earnings by 30 minutes',
+    cost: 5,
+    currency: 'catnip',
+  },
+  {
+    id: 'offline_30min_diamond',
+    name: '+30min Offline Time',
+    icon: '⏰',
+    desc: 'Extends offline earnings by 30 minutes',
+    cost: 3,
+    currency: 'diamonds',
+  },
 ];
 
 // Player's purchased shop items
@@ -186,6 +202,11 @@ function applyShopItem(itemId) {
         showToast('👆 Click boost expired');
         render();
       }, 3600000);
+      break;
+    case 'offline_30min_catnip':
+    case 'offline_30min_diamond':
+      game.offlineTimeMinutes += 30;
+      showToast(`⏰ Offline time extended to ${game.offlineTimeMinutes} min`);
       break;
     case 'effect_sparkle':
     case 'effect_rainbow':

@@ -10,6 +10,7 @@ const { initDB } = require('./db');
 const authRoutes = require('./routes/auth');
 const saveRoutes = require('./routes/save');
 const adminRoutes = require('./routes/admin');
+const leaderboardRoutes = require('./routes/leaderboard');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -26,6 +27,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use('/api/auth', authRoutes);     // Registration, login, user info
 app.use('/api/save', saveRoutes);     // Save and load game state
 app.use('/api/admin', adminRoutes);   // Admin panel: speed, currency, user management
+app.use('/api/leaderboard', leaderboardRoutes); // Public leaderboard
 
 // --- Health check endpoint ---
 app.get('/api/health', (req, res) => {

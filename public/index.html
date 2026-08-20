@@ -39,6 +39,7 @@
         <button class="nav-btn" data-panel="prestige" title="Prestige">✨</button>
         <button class="nav-btn" data-panel="shop" title="Shop">🛒</button>
         <button class="nav-btn" data-panel="achievements" title="Achievements">🏆</button>
+        <button class="nav-btn" data-panel="leaderboard" title="Leaderboard">📊</button>
         <button class="nav-btn admin-only" data-panel="admin" title="Admin">⚙️</button>
       </nav>
 
@@ -105,6 +106,12 @@
           <div id="achievementList"></div>
         </section>
 
+        <!-- == Leaderboard Panel == -->
+        <section id="panel-leaderboard" class="panel">
+          <h2>📊 Leaderboard</h2>
+          <div id="leaderboardContent"></div>
+        </section>
+
         <!-- == Admin Panel (hidden for non-admins) == -->
         <section id="panel-admin" class="panel">
           <h2>⚙️ Admin Panel</h2>
@@ -157,6 +164,7 @@
   <script src="/js/prestige.js"></script>
   <script src="/js/shop.js"></script>
   <script src="/js/achievements.js"></script>
+  <script src="/js/leaderboard.js"></script>
   <script src="/js/main.js"></script>
 
 </body>

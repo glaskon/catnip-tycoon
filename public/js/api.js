@@ -57,7 +57,7 @@ const api = {
   // --- Save / Load ---
   async loadGameState() {
     const data = await this.apiCall('/save', 'GET');
-    return data.game_state;
+    return { gameState: data.game_state, updatedAt: data.updated_at };
   },
 
   async saveGameState(gameState) {
@@ -79,6 +79,11 @@ const api = {
 
   async adminListUsers() {
     return this.apiCall('/admin/users', 'GET');
+  },
+
+  // --- Leaderboard ---
+  async getLeaderboard() {
+    return this.apiCall('/leaderboard', 'GET');
   },
 };
 
