@@ -128,6 +128,19 @@
   <!-- Achievement Unlock Toast -->
   <div id="achievementToast" class="toast">🏆 Achievement Unlocked!</div>
 
+  <!-- Debug overlay for development -->
+  <div id="debugOverlay" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#0f0;font:11px monospace;padding:4px 8px;max-height:60px;overflow-y:auto;z-index:9999;display:none;"></div>
+  <script>
+    function showDebug(msg) {
+      const el = document.getElementById('debugOverlay');
+      if (!el) return;
+      el.style.display = 'block';
+      const t = new Date().toLocaleTimeString();
+      el.innerHTML = '[' + t + '] ' + msg + '<br>' + el.innerHTML;
+      if (el.children.length > 10) el.removeChild(el.lastChild);
+    }
+  </script>
+
   <!-- ===== Scripts (vanilla JS, no frameworks) ===== -->
   <script src="/js/i18n.js"></script>
   <script src="/js/api.js"></script>

@@ -180,13 +180,23 @@ function clickCat(event) {
 // Buy a cat by index in the cats array
 function buyCat(index) {
   const cat = game.cats[index];
-  if (!cat || !cat.unlocked) return false;
+  if (!cat || !cat.unlocked) {
+    showDebug('buyCat: cat null or locked (idx=' + index + ')');
+    return false;
+  }
 
   const cost = cat.currentCost;
-  if (!spendFish(cost)) return false;
+  showDebug('buyCat: ' + cat.id + ' cost=' + cost + ' fish=' + game.fish.toFixed(0));
+
+  if (!spendFish(cost)) {
+    showDebug('buyCat: cannot afford ' + cost + ' (fish=' + game.fish.toFixed(0) + ')');
+    return false;
+  }
 
   cat.count++;
   game.totalCatsBought++;
+  showDebug('buyCat: BOUGHT! ' + cat.id + ' #' + cat.count);
+
   recalcFPS();
 
   if (typeof checkAchievements === 'function') checkAchievements();
