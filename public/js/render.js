@@ -241,6 +241,19 @@ function updateStats() {
   document.getElementById('fishPerSec').textContent = formatNumber(game.fishPerSecond);
   document.getElementById('catnipCount').textContent = formatNumber(Math.floor(game.catnip));
   document.getElementById('diamondCount').textContent = formatNumber(Math.floor(game.diamonds));
+  renderTopBar();
+}
+
+// Update the top bar resource display
+function renderTopBar() {
+  const resFish = document.getElementById('resFish');
+  const resFps = document.getElementById('resFps');
+  const resCatnip = document.getElementById('resCatnip');
+  const resDiamonds = document.getElementById('resDiamonds');
+  if (resFish) resFish.textContent = formatNumber(game.fish);
+  if (resFps) resFps.textContent = formatNumber(game.fishPerSecond);
+  if (resCatnip) resCatnip.textContent = formatNumber(Math.floor(game.catnip));
+  if (resDiamonds) resDiamonds.textContent = formatNumber(Math.floor(game.diamonds));
 }
 
 // Render cats panel
@@ -348,4 +361,5 @@ window.formatNumber = formatNumber;
 window.updateStats = updateStats;
 window.renderCats = renderCats;
 window.renderUpgrades = renderUpgrades;
+window.renderTopBar = renderTopBar;
 window.render = render;

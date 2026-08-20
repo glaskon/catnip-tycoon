@@ -14,9 +14,17 @@
   <!-- ===== Main Game Layout ===== -->
   <div id="app">
 
-    <!-- ----- Top Bar: User info, login/register button ----- -->
+    <!-- ----- Top Bar: User info, resources, login/register button ----- -->
     <header id="topBar">
-      <span id="userStatus">🐱 Not logged in</span>
+      <div id="topBarLeft">
+        <span id="userStatus">🐱 Not logged in</span>
+      </div>
+      <div id="resourceBar">
+        <span class="res-item" title="Fish">🐟 <span id="resFish">0</span></span>
+        <span class="res-item" title="Fish per second">⚡ <span id="resFps">0</span>/s</span>
+        <span class="res-item" title="Catnip">🌿 <span id="resCatnip">0</span></span>
+        <span class="res-item" title="Diamonds">💎 <span id="resDiamonds">0</span></span>
+      </div>
       <button id="btnAuth" class="btn btn-sm">Login / Register</button>
     </header>
 

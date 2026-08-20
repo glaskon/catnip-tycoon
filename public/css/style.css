@@ -73,17 +73,48 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 8px 12px;
   background: var(--bg-secondary);
   border-bottom: 2px solid var(--bg-tertiary);
   position: sticky;
   top: 0;
   z-index: 10;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+#topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #userStatus {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* --- Resource Bar (top bar HUD) --- */
+#resourceBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.res-item {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.res-item span {
+  font-weight: bold;
+  color: var(--cat-orange-light);
 }
 
 /* --- Main Layout (mobile: stack, desktop: row) --- */
