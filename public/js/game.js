@@ -1,7 +1,7 @@
 // Core game state and mechanics for Catnip Tycoon
 const game = {
   // --- Resources ---
-  fish: 0,
+  fish: 10,  // Starter fish for first cat purchase
   fishPerClick: 1,
   fishPerSecond: 0,
   catnip: 0,
