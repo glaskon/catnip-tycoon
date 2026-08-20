@@ -115,5 +115,12 @@
   "admin.users": "Benutzerliste",
   "auth.errorUppercase": "Passwort muss mindestens einen Großbuchstaben enthalten",
   "auth.errorDigit": "Passwort muss mindestens eine Ziffer enthalten",
-  "auth.forgotPassword": "Passwort vergessen?"
+  "auth.forgotPassword": "Passwort vergessen?",
+  "cats.kotfeniks": "Phönixkatze",
+  "prestige.tier4": "Stufe 4: Alchemie (Elixiere & zeitliche Boosts)",
+  "prestige.tier5": "Stufe 5: Phönixkatze freigeschaltet",
+  "prestige.tier6": "Stufe 6: Katzenanker (behalte 1 Katze durch Prestige)",
+  "prestige.tier7": "Stufe 7: Katzengnade (10% Fisch zurück als Katzenminze)",
+  "prestige.tier8": "Stufe 8: Auserwählter (1 Upgrade überlebt Prestige)",
+  "prestige.tier9": "Stufe 9: Göttinkatze (×100 Produktion)"
 }

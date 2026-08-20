@@ -115,5 +115,12 @@
   "admin.users": "Lista de usuarios",
   "auth.errorUppercase": "La contraseña debe contener al menos una mayúscula",
   "auth.errorDigit": "La contraseña debe contener al menos un dígito",
-  "auth.forgotPassword": "¿Olvidaste tu contraseña?"
+  "auth.forgotPassword": "¿Olvidaste tu contraseña?",
+  "cats.kotfeniks": "Gato Fénix",
+  "prestige.tier4": "Nivel 4: Alquimia (Elixires y potenciadores)",
+  "prestige.tier5": "Nivel 5: Gato Fénix desbloqueado",
+  "prestige.tier6": "Nivel 6: Ancla felina (conserva 1 gato al prestige)",
+  "prestige.tier7": "Nivel 7: Gracia gatuna (10% de peces devueltos como catnip)",
+  "prestige.tier8": "Nivel 8: Elegido (1 mejora sobrevive al prestige)",
+  "prestige.tier9": "Nivel 9: Diosa Gata (×100 producción)"
 }

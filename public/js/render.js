@@ -266,7 +266,7 @@ function renderCats() {
     const cat = game.cats[i];
     const name = i18n.t(cat.nameKey, cat.id);
     const cost = cat.currentCost;
-    const canAfford = game.fish >= cost;
+    const canAfford = cat.currency === 'catnip' ? game.catnip >= cost : game.fish >= cost;
     const isUnlocked = cat.unlocked;
     const prestigeReq = CAT_DEFINITIONS[i].requiresPrestige;
 
@@ -278,9 +278,10 @@ function renderCats() {
     html += `</div>`;
 
     if (!isUnlocked) {
-      html += `<div class="card-cost">🔒 Prestige ${prestigeReq} needed</div>`;
+      html += `<div class="card-cost">🔒 ${prestigeReq ? `Prestige ${prestigeReq}` : ''}</div>`;
     } else {
-      html += `<div class="card-cost">🐟 ${formatNumber(cost)}</div>`;
+      const costIcon = cat.currency === 'catnip' ? '🌿' : '🐟';
+      html += `<div class="card-cost">${costIcon} ${formatNumber(cost)}</div>`;
       html += `<button class="btn btn-primary btn-sm card-btn" 
                 onclick="buyCat(${i})" 
                 ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;

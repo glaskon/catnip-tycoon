@@ -9,6 +9,12 @@ const game = {
   totalFishEarned: 0,
   prestigeCount: 0,
   speedMultiplier: 1,
+  elixirs: 0,
+
+  // --- Prestige persistence ---
+  anchoredCatId: null,     // Tier 6: cat to keep through prestige
+  preservedUpgradeId: null, // Tier 8: upgrade to keep through prestige
+  totalPrestigeFishSpent: 0, // Track for Tier 7 cashback
 
   // --- Click tracking ---
   clickCount: 0,
@@ -43,6 +49,7 @@ const CAT_DEFINITIONS = [
   { id: 'sfinks', nameKey: 'cats.sfinks', baseCost: 25000, baseProduction: 1000, costGrowth: 1.15 },
   { id: 'mainecoon', nameKey: 'cats.mainecoon', baseCost: 100000, baseProduction: 5000, costGrowth: 1.15 },
   { id: 'kotmag', nameKey: 'cats.kotmag', baseCost: 500000, baseProduction: 25000, costGrowth: 1.20, requiresPrestige: 1 },
+  { id: 'kotfeniks', nameKey: 'cats.kotfeniks', baseCost: 100, baseProduction: 1000000, costGrowth: 1.50, requiresPrestige: 20, currency: 'catnip' },
 ];
 
 // ============================================================
@@ -64,6 +71,7 @@ function initGame() {
   game.cats = CAT_DEFINITIONS.map(def => ({
     ...def,
     count: 0,
+    currency: def.currency || 'fish',
     get currentCost() {
       return Math.floor(def.baseCost * Math.pow(def.costGrowth, this.count));
     },
@@ -106,11 +114,16 @@ function spendFish(amount) {
 function recalcFPS() {
   let base = 0;
   let hasWizardCat = false;
+  let hasFeniks = false;
+  let hasGoddess = false;
 
   for (const cat of game.cats) {
     base += cat.production;
     if (cat.id === 'kotmag' && cat.count > 0) {
       hasWizardCat = true;
+    }
+    if (cat.id === 'kotfeniks' && cat.count > 0) {
+      hasFeniks = true;
     }
   }
 
@@ -122,12 +135,36 @@ function recalcFPS() {
     }
   }
 
+  // Feniks Cat: +25% to all cat production per feniks cat
+  if (hasFeniks) {
+    const feniksCats = game.cats.find(c => c.id === 'kotfeniks');
+    if (feniksCats) {
+      base *= (1 + 0.25 * feniksCats.count);
+    }
+  }
+
   // Upgrades that affect FPS
   if (hasUpgrade('karma')) base *= 2;
   if (hasUpgrade('buda')) base *= 1.5;
 
   // Prestige tier bonuses
   if (game.prestigeCount >= 5) base *= 2; // Tier 3: Divine artifacts
+
+  // Every 10 prestige levels: cumulative +5% fish/s (Tier 4+)
+  if (game.prestigeCount >= 10) {
+    const tierBonus = 1 + (Math.floor(game.prestigeCount / 10) * 0.05);
+    base *= tierBonus;
+  }
+
+  // Kot Bogini (Tier 9): ×100 at 100 prestige
+  if (game.prestigeCount >= 100) {
+    base *= 100;
+  }
+
+  // Elixir production boost
+  if (game._prodBoost) {
+    base *= 10;
+  }
 
   game.fishPerSecond = base;
 }
@@ -186,16 +223,31 @@ function buyCat(index) {
   }
 
   const cost = cat.currentCost;
-  showDebug('buyCat: ' + cat.id + ' cost=' + cost + ' fish=' + game.fish.toFixed(0));
+  const currency = cat.currency || 'fish'; // Kot Feniks uses catnip
 
-  if (!spendFish(cost)) {
-    showDebug('buyCat: cannot afford ' + cost + ' (fish=' + game.fish.toFixed(0) + ')');
+  showDebug('buyCat: ' + cat.id + ' cost=' + cost + ' currency=' + currency + ' fish=' + game.fish.toFixed(0) + ' catnip=' + game.catnip.toFixed(0));
+
+  let canAfford = false;
+  if (currency === 'catnip') {
+    canAfford = game.catnip >= cost;
+  } else {
+    canAfford = game.fish >= cost;
+  }
+
+  if (!canAfford) {
+    showDebug('buyCat: cannot afford ' + cost + ' ' + currency);
     return false;
   }
 
   cat.count++;
   game.totalCatsBought++;
   showDebug('buyCat: BOUGHT! ' + cat.id + ' #' + cat.count);
+
+  if (currency === 'catnip') {
+    game.catnip -= cost;
+  } else {
+    game.fish -= cost;
+  }
 
   recalcFPS();
 
@@ -281,6 +333,15 @@ function prestige() {
   const oldCatnip = game.catnip;
   const oldDiamonds = game.diamonds;
   const oldPrestigeCount = game.prestigeCount + 1;
+  const oldElixirs = game.elixirs;
+  const oldAnchoredCatId = game.anchoredCatId;
+  const oldPreservedUpgradeId = game.preservedUpgradeId;
+
+  // Tier 7 (50+): cashback — 10% of total fish earned returns as catnip bonus
+  let cashbackCatnip = 0;
+  if (game.prestigeCount >= 50) {
+    cashbackCatnip = Math.floor(game.totalFishEarned * 0.1 / 100);
+  }
 
   // Reset everything except catnip, diamonds, prestigeCount
   game.fish = 0;
@@ -289,13 +350,29 @@ function prestige() {
   game.totalFishEarned = 0;
   game.clickCount = 0;
   game.totalCatsBought = 0;
-  game.catnip = oldCatnip + catnipGain;
+  game.catnip = oldCatnip + catnipGain + cashbackCatnip;
   game.diamonds = oldDiamonds;
   game.prestigeCount = oldPrestigeCount;
+  game.elixirs = oldElixirs;
 
-  // Reset cats and upgrades
-  game.cats.forEach(c => (c.count = 0));
-  game.upgrades.forEach(u => (u.purchased = false));
+  // Reset cats — keep anchored cat if Tier 6 (35+)
+  game.cats.forEach(c => {
+    if (oldAnchoredCatId && c.id === oldAnchoredCatId && game.prestigeCount >= 35) {
+      // Keep this cat's count through prestige
+    } else {
+      c.count = 0;
+    }
+  });
+
+  // Reset upgrades — keep preserved upgrade if Tier 8 (75+)
+  game.upgrades.forEach(u => {
+    if (oldPreservedUpgradeId && u.id === oldPreservedUpgradeId && game.prestigeCount >= 75) {
+      u.purchased = true;
+      applyUpgradeEffect(u.id);
+    } else {
+      u.purchased = false;
+    }
+  });
 
   recalcFPS();
 
@@ -326,9 +403,18 @@ function gameLoop() {
     addFish(game.fishPerClick * (hasUpgrade('miska') ? 2 : 1) * clicks);
   }
 
-  // Tier 2 prestige: Cat Shrine generates catnip/s
+  // Tier 2 prestige: Cat Shrine generates catnip/s (scales with prestige)
   if (game.prestigeCount >= 3) {
-    game.catnip += 0.01 * delta * game.speedMultiplier;
+    let catnipRate = 0.01;
+    if (game.prestigeCount >= 10) {
+      catnipRate += (game.prestigeCount - 9) * 0.005; // scales: +0.005/s per prestige past 10
+    }
+    game.catnip += catnipRate * delta * game.speedMultiplier;
+  }
+
+  // Tier 4+: tick elixirs
+  if (typeof tickElixirs === 'function') {
+    tickElixirs(delta);
   }
 
   // Update UI
@@ -349,6 +435,9 @@ async function saveGame() {
       totalFishEarned: game.totalFishEarned,
       prestigeCount: game.prestigeCount,
       speedMultiplier: game.speedMultiplier,
+      elixirs: game.elixirs,
+      anchoredCatId: game.anchoredCatId,
+      preservedUpgradeId: game.preservedUpgradeId,
       clickCount: game.clickCount,
       totalCatsBought: game.totalCatsBought,
       cats: game.cats.map(c => ({ id: c.id, count: c.count })),
@@ -383,6 +472,9 @@ async function loadGame() {
     game.totalFishEarned = state.totalFishEarned || 0;
     game.prestigeCount = state.prestigeCount || 0;
     game.speedMultiplier = state.speedMultiplier || 1;
+    game.elixirs = state.elixirs || 0;
+    game.anchoredCatId = state.anchoredCatId || null;
+    game.preservedUpgradeId = state.preservedUpgradeId || null;
     game.clickCount = state.clickCount || 0;
     game.totalCatsBought = state.totalCatsBought || 0;
 

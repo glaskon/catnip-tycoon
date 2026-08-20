@@ -115,5 +115,12 @@
   "admin.users": "Lista użytkowników",
   "auth.errorUppercase": "Hasło musi zawierać co najmniej jedną wielką literę",
   "auth.errorDigit": "Hasło musi zawierać co najmniej jedną cyfrę",
-  "auth.forgotPassword": "Nie pamiętasz hasła?"
+  "auth.forgotPassword": "Nie pamiętasz hasła?",
+  "cats.kotfeniks": "Kot Feniks",
+  "prestige.tier4": "Poziom 4: Alchemia (Eliksiry i boosty czasowe)",
+  "prestige.tier5": "Poziom 5: Kot Feniks odblokowany",
+  "prestige.tier6": "Poziom 6: Kotwica Pamięci (zachowaj 1 kota przez prestiż)",
+  "prestige.tier7": "Poziom 7: Kocia Łaska (10% rybek wraca jako catnip)",
+  "prestige.tier8": "Poziom 8: Wybraniec (1 upgrade nie ginie przy prestiżu)",
+  "prestige.tier9": "Poziom 9: Kot Bogini (×100 produkcji!)"
 }
