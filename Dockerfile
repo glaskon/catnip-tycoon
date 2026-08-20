@@ -2,7 +2,7 @@
 FROM node:20-bookworm AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # --- Production stage ---
 FROM node:20-bookworm
