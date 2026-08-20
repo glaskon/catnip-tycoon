@@ -146,5 +146,5 @@
   "upgrades.prestigeBoost": "Impulso de Prestigio",
   "upgrades.prestigeBoostDesc": "+25% más hierba del prestigio",
   "upgrades.diamondluck": "Suerte de Diamante",
-  "upgrades.diamondluckDesc": "+5% probabilidad de diamante al hacer clic"
+  "upgrades.diamondluckDesc": "Aumenta la probabilidad de diamante (multiplicativo por nivel)"
 }

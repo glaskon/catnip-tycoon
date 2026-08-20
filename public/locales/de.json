@@ -146,5 +146,5 @@
   "upgrades.prestigeBoost": "Prestige-Schub",
   "upgrades.prestigeBoostDesc": "+25% mehr Katzenminze vom Prestige",
   "upgrades.diamondluck": "Diamantenglück",
-  "upgrades.diamondluckDesc": "+5% Diamanten-Chance beim Klicken"
+  "upgrades.diamondluckDesc": "Erhöht Diamant-Chance (multiplikativ pro Stufe)"
 }

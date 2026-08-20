@@ -75,25 +75,31 @@ const SHOP_ITEMS = [
     currency: 'diamonds',
   },
   {
-    id: 'offline_30min_catnip',
-    name: '+30min Offline Time',
+    id: 'offline_catnip',
+    name: '+30min Offline (catnip)',
     icon: '⏰',
-    desc: 'Extends offline earnings by 30 minutes',
-    cost: 5,
+    desc: 'Extends offline earnings by 30 min',
+    baseCost: 15,
     currency: 'catnip',
+    type: 'stackable',
+    costGrowth: 2,
   },
   {
-    id: 'offline_30min_diamond',
-    name: '+30min Offline Time',
+    id: 'offline_diamond',
+    name: '+30min Offline (diamonds)',
     icon: '⏰',
-    desc: 'Extends offline earnings by 30 minutes',
-    cost: 3,
+    desc: 'Extends offline earnings by 30 min',
+    baseCost: 15,
     currency: 'diamonds',
+    type: 'stackable',
+    costGrowth: 2,
   },
 ];
 
-// Player's purchased shop items
+// Player's purchased shop items (once-type)
 let purchasedItems = [];
+// Stackable shop purchases count { itemId: count }
+let shopCounts = {};
 
 // Load purchased items from localStorage
 function loadPurchasedItems() {
@@ -103,16 +109,42 @@ function loadPurchasedItems() {
   } catch {
     purchasedItems = [];
   }
+  try {
+    const stored = localStorage.getItem('catnip-shopcounts');
+    shopCounts = stored ? JSON.parse(stored) : {};
+  } catch {
+    shopCounts = {};
+  }
 }
 
 // Save purchased items to localStorage
 function savePurchasedItems() {
   localStorage.setItem('catnip-purchased', JSON.stringify(purchasedItems));
+  localStorage.setItem('catnip-shopcounts', JSON.stringify(shopCounts));
 }
 
-// Check if an item has been purchased
+// Check if an once-type item has been purchased
 function hasItem(itemId) {
   return purchasedItems.includes(itemId);
+}
+
+// Get the current cost of a shop item (handles stackable pricing)
+function getShopItemCost(item) {
+  if (item.type === 'stackable') {
+    const count = shopCounts[item.id] || 0;
+    return Math.floor(item.baseCost * Math.pow(item.costGrowth, count));
+  }
+  return item.cost;
+}
+
+// Check if item is stackable (can be bought multiple times)
+function isItemStackable(item) {
+  return item.type === 'stackable';
+}
+
+// Get the count of a stackable item purchased
+function getShopItemCount(itemId) {
+  return shopCounts[itemId] || 0;
 }
 
 // Render the shop grid
@@ -123,21 +155,34 @@ function renderShop() {
   let html = '<div class="shop-grid">';
 
   for (const item of SHOP_ITEMS) {
-    const owned = hasItem(item.id);
-    const currencyIcon = item.currency === 'diamonds' ? '💎' : '🐟';
+    const owned = !isItemStackable(item) && hasItem(item.id);
+    const currencyIcon = item.currency === 'diamonds' ? '💎' : item.currency === 'catnip' ? '🌿' : '🐟';
+    const cost = getShopItemCost(item);
     const canAfford = item.currency === 'diamonds'
-      ? game.diamonds >= item.cost
-      : game.fish >= item.cost;
+      ? game.diamonds >= cost
+      : item.currency === 'catnip'
+        ? game.catnip >= cost
+        : game.fish >= cost;
 
     html += `<div class="shop-item">`;
     html += `<span class="shop-item-icon">${item.icon}</span>`;
     html += `<div class="shop-item-name">${item.name}</div>`;
     html += `<div style="font-size: 0.7rem; color: var(--text-secondary); margin: 4px 0;">${item.desc}</div>`;
 
-    if (owned) {
+    if (isItemStackable(item)) {
+      const count = getShopItemCount(item.id);
+      if (count > 0) {
+        html += `<div style="font-size: 0.7rem; color: var(--cat-orange);">Purchased ${count}x</div>`;
+      }
+      html += `<div class="shop-item-price">${currencyIcon} ${formatNumber(cost)}</div>`;
+      html += `<button class="btn btn-primary btn-sm" 
+                onclick="buyShopItem('${item.id}')"
+                ${!canAfford ? 'disabled' : ''}
+                style="margin-top: 6px;">${i18n.t('shop.buy')}</button>`;
+    } else if (owned) {
       html += `<div class="shop-item-price" style="color: var(--success);">✅ Owned</div>`;
     } else {
-      html += `<div class="shop-item-price">${currencyIcon} ${item.cost}</div>`;
+      html += `<div class="shop-item-price">${currencyIcon} ${formatNumber(cost)}</div>`;
       html += `<button class="btn btn-primary btn-sm" 
                 onclick="buyShopItem('${item.id}')"
                 ${!canAfford ? 'disabled' : ''}
@@ -159,21 +204,28 @@ function renderShop() {
 
 // Buy a shop item
 function buyShopItem(itemId) {
-  if (hasItem(itemId)) return;
-
   const item = SHOP_ITEMS.find(i => i.id === itemId);
   if (!item) return;
 
+  const cost = getShopItemCost(item);
+
   // Check currency
-  if (item.currency === 'diamonds' && game.diamonds < item.cost) return;
-  if (item.currency === 'fish' && game.fish < item.cost) return;
+  if (item.currency === 'diamonds' && game.diamonds < cost) return;
+  if (item.currency === 'catnip' && game.catnip < cost) return;
+  if (item.currency === 'fish' && game.fish < cost) return;
 
   // Deduct cost
-  if (item.currency === 'diamonds') game.diamonds -= item.cost;
-  else game.fish -= item.cost;
+  if (item.currency === 'diamonds') game.diamonds -= cost;
+  else if (item.currency === 'catnip') game.catnip -= cost;
+  else game.fish -= cost;
 
-  // Mark as purchased
-  purchasedItems.push(itemId);
+  // Track purchase
+  if (isItemStackable(item)) {
+    shopCounts[itemId] = (shopCounts[itemId] || 0) + 1;
+  } else {
+    if (hasItem(itemId)) return; // already owned
+    purchasedItems.push(itemId);
+  }
   savePurchasedItems();
 
   // Apply cosmetic/effect immediately
@@ -203,8 +255,8 @@ function applyShopItem(itemId) {
         render();
       }, 3600000);
       break;
-    case 'offline_30min_catnip':
-    case 'offline_30min_diamond':
+    case 'offline_catnip':
+    case 'offline_diamond':
       game.offlineTimeMinutes += 30;
       showToast(`⏰ Offline time extended to ${game.offlineTimeMinutes} min`);
       break;

@@ -82,7 +82,7 @@ const UPGRADE_DEFINITIONS = [
   { id: 'catnipmastery', nameKey: 'upgrades.catnipmastery', descKey: 'upgrades.catnipmasteryDesc', effect: 'catnipMastery', cost: 100, currency: 'catnip', type: 'once' },
   { id: 'elixirmastery', nameKey: 'upgrades.elixirmastery', descKey: 'upgrades.elixirmasteryDesc', effect: 'elixirMastery', cost: 25, currency: 'catnip', type: 'once' },
   { id: 'prestigeBoost', nameKey: 'upgrades.prestigeBoost', descKey: 'upgrades.prestigeBoostDesc', effect: 'prestigeBoost', cost: 200, currency: 'catnip', type: 'once' },
-  { id: 'diamondluck', nameKey: 'upgrades.diamondluck', descKey: 'upgrades.diamondluckDesc', effect: 'diamondLuck', cost: 30, currency: 'catnip', type: 'once' },
+  { id: 'diamondluck', nameKey: 'upgrades.diamondluck', descKey: 'upgrades.diamondluckDesc', effect: 'diamondLuck', baseCost: 10, currency: 'diamonds', type: 'stackable', costGrowth: 5 },
 ];
 
 // ============================================================
@@ -268,9 +268,16 @@ function clickCat(event) {
     game.catnip += 0.1;
   }
 
-  // Diamond drops: base 1/10000 (0.01%) per click
-  // DiamondLuck upgrade: 10x drop rate → 1/1000 (0.1%)
-  const diamondDropRate = hasUpgrade('diamondluck') ? 0.001 : 0.0001;
+  // Diamond drops: base 0.0001% (1/1,000,000) per click
+  // DiamondLuck: multiplicative per level — ×1.05, ×1.06, ×1.10, ×1.15...
+  let diamondDropRate = 0.000001;
+  const diamondLuckLevel = getUpgradeLevel('diamondluck');
+  if (diamondLuckLevel > 0) {
+    const dlMultipliers = [1.05, 1.06, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.50];
+    for (let i = 0; i < Math.min(diamondLuckLevel, dlMultipliers.length); i++) {
+      diamondDropRate *= dlMultipliers[i];
+    }
+  }
   if (Math.random() < diamondDropRate) {
     game.diamonds += 1;
   }
@@ -351,10 +358,12 @@ function buyUpgrade(index) {
   // Check if player can afford
   if (currency === 'fish' && game.fish < cost) return false;
   if (currency === 'catnip' && game.catnip < cost) return false;
+  if (currency === 'diamonds' && game.diamonds < cost) return false;
 
   // Deduct cost
   if (currency === 'fish') game.fish -= cost;
-  else game.catnip -= cost;
+  else if (currency === 'catnip') game.catnip -= cost;
+  else if (currency === 'diamonds') game.diamonds -= cost;
 
   // Apply purchase
   if (upg.type === 'stackable') {

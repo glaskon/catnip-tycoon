@@ -302,14 +302,16 @@ function renderUpgrades() {
     const upg = game.upgrades[i];
     const name = i18n.t(upg.nameKey, upg.id);
     const desc = i18n.t(upg.descKey, '');
-    const currencyIcon = upg.currency === 'fish' ? '🐟' : '🌿';
+    const currencyIcon = upg.currency === 'fish' ? '🐟' : upg.currency === 'catnip' ? '🌿' : '💎';
 
     const isStackable = upg.type === 'stackable';
     const isPurchased = isStackable ? upg.level > 0 : upg.purchased;
     const cost = isStackable ? upg.currentCost : upg.cost;
     const canAfford = upg.currency === 'fish'
       ? game.fish >= cost
-      : game.catnip >= cost;
+      : upg.currency === 'catnip'
+        ? game.catnip >= cost
+        : game.diamonds >= cost;
 
     let cardClass = '';
     if (isStackable && upg.level > 0) cardClass = 'unlocked';
