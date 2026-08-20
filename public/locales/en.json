@@ -14,7 +14,7 @@
   "auth.noAccount": "Don't have an account? Register",
   "auth.hasAccount": "Already have an account? Login",
   "auth.errorRequired": "Email and password are required",
-  "auth.errorPassword": "Password must be at least 6 characters",
+  "auth.errorPassword": "Password must be at least 8 characters",
   "game.click": "Click the cat!",
   "game.fish": "Fish",
   "game.perSecond": "/s",
@@ -112,5 +112,8 @@
   "admin.currencyType": "Currency",
   "admin.currencyAmount": "Amount",
   "admin.currencyAdd": "Add Currency",
-  "admin.users": "User List"
+  "admin.users": "User List",
+  "auth.errorUppercase": "Password must contain at least one uppercase letter",
+  "auth.errorDigit": "Password must contain at least one digit",
+  "auth.forgotPassword": "Forgot password?"
 }

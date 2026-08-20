@@ -54,6 +54,19 @@ async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      -- Password reset tokens (valid 15 minutes, single use)
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(255) NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- Index on token for fast lookups
+      CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
+
       -- Insert default admin config if not exists
       INSERT INTO admin_config (speed_multiplier)
       SELECT 1.0

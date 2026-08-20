@@ -124,9 +124,17 @@ let authMode = 'login'; // 'login' or 'register'
 function initAuthUI() {
   const authForm = document.getElementById('authForm');
   const authToggle = document.getElementById('authToggle');
+  const authForgot = document.getElementById('authForgot');
 
   authForm.addEventListener('submit', handleAuth);
   authToggle.addEventListener('click', toggleAuthMode);
+
+  // Forgot password — open reset page
+  if (authForgot) {
+    authForgot.addEventListener('click', () => {
+      window.location.href = '/reset-password.html';
+    });
+  }
 }
 
 function openAuthModal() {
@@ -168,8 +176,16 @@ async function handleAuth(e) {
     errorEl.textContent = i18n.t('auth.errorRequired');
     return;
   }
-  if (password.length < 6) {
+  if (password.length < 8) {
     errorEl.textContent = i18n.t('auth.errorPassword');
+    return;
+  }
+  if (!/[A-Z]/.test(password)) {
+    errorEl.textContent = i18n.t('auth.errorUppercase');
+    return;
+  }
+  if (!/[0-9]/.test(password)) {
+    errorEl.textContent = i18n.t('auth.errorDigit');
     return;
   }
 

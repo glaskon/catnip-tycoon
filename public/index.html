@@ -116,9 +116,10 @@
       <h2 id="authTitle">Login</h2>
       <form id="authForm">
         <input type="email" id="authEmail" placeholder="Email" required>
-        <input type="password" id="authPassword" placeholder="Password" minlength="6" required>
+        <input type="password" id="authPassword" placeholder="Password (min 8 chars, 1 uppercase, 1 digit)" required>
         <button type="submit" class="btn btn-primary" id="authSubmit">Login</button>
-        <button type="button" class="btn btn-link" id="authToggle">Don't have an account? Register</button>
+                      <button type="button" class="btn btn-link" id="authToggle">Don't have an account? Register</button>
+                      <button type="button" class="btn btn-link" id="authForgot" style="font-size: 0.75rem; display: block; margin: 8px auto 0;">Forgot password?</button>
       </form>
       <p id="authError" class="error-msg"></p>
     </div>

@@ -1,7 +1,7 @@
 // Core game state and mechanics for Catnip Tycoon
 const game = {
   // --- Resources ---
-  fish: 25,  // Starter fish
+  fish: 0,  // No starter — everything earned by clicking
   fishPerClick: 1,
   fishPerSecond: 0,
   catnip: 0,
@@ -356,14 +356,15 @@ async function loadGame() {
 
   try {
     const state = await api.loadGameState();
-    if (!state || state.fish === undefined) return; // Fresh save — keep starter fish
-
-    // Detect empty/default save (no actual progress yet)
-    if (!state.totalFishEarned && !state.totalCatsBought && !state.prestigeCount) {
-      return; // Keep starter fish — no real progress on server
+    if (!state || state._fresh) {
+      // No save on server yet — start with defaults (already set in game object)
+      console.log('[Game] Fresh account — starting from zero');
+      recalcFPS();
+      render();
+      return;
     }
 
-    // Restore game state
+    // Always restore whatever the server has — even if it's all zeros
     game.fish = state.fish || 0;
     game.fishPerClick = state.fishPerClick || 1;
     game.fishPerSecond = state.fishPerSecond || 0;

@@ -14,7 +14,7 @@
   "auth.noAccount": "Nie masz konta? Zarejestruj się",
   "auth.hasAccount": "Masz już konto? Zaloguj się",
   "auth.errorRequired": "Email i hasło są wymagane",
-  "auth.errorPassword": "Hasło musi mieć co najmniej 6 znaków",
+  "auth.errorPassword": "Hasło musi mieć minimum 8 znaków",
   "game.click": "Kliknij kota!",
   "game.fish": "Rybki",
   "game.perSecond": "/s",
@@ -112,5 +112,8 @@
   "admin.currencyType": "Waluta",
   "admin.currencyAmount": "Ilość",
   "admin.currencyAdd": "Dodaj walutę",
-  "admin.users": "Lista użytkowników"
+  "admin.users": "Lista użytkowników",
+  "auth.errorUppercase": "Hasło musi zawierać co najmniej jedną wielką literę",
+  "auth.errorDigit": "Hasło musi zawierać co najmniej jedną cyfrę",
+  "auth.forgotPassword": "Nie pamiętasz hasła?"
 }

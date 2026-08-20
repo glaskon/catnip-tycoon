@@ -14,7 +14,7 @@
   "auth.noAccount": "¿No tienes cuenta? Regístrate",
   "auth.hasAccount": "¿Ya tienes cuenta? Inicia sesión",
   "auth.errorRequired": "Correo y contraseña son obligatorios",
-  "auth.errorPassword": "La contraseña debe tener al menos 6 caracteres",
+  "auth.errorPassword": "La contraseña debe tener al menos 8 caracteres",
   "game.click": "¡Haz clic en el gato!",
   "game.fish": "Peces",
   "game.perSecond": "/s",
@@ -112,5 +112,8 @@
   "admin.currencyType": "Moneda",
   "admin.currencyAmount": "Cantidad",
   "admin.currencyAdd": "Añadir moneda",
-  "admin.users": "Lista de usuarios"
+  "admin.users": "Lista de usuarios",
+  "auth.errorUppercase": "La contraseña debe contener al menos una mayúscula",
+  "auth.errorDigit": "La contraseña debe contener al menos un dígito",
+  "auth.forgotPassword": "¿Olvidaste tu contraseña?"
 }
