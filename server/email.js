@@ -3,14 +3,22 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
-// Read SMTP password from file
+// Read SMTP password from env var or file
 let cachedPass = null;
 function getSmtpPass() {
   if (cachedPass) return cachedPass;
+  
+  // 1. Try environment variable first (set in Coolify)
+  if (process.env.SMTP_PASS) {
+    cachedPass = process.env.SMTP_PASS;
+    return cachedPass;
+  }
+  
+  // 2. Fallback to password file (local dev)
   try {
     cachedPass = fs.readFileSync('/tmp/email_pass_brajanek', 'utf8').trim();
   } catch {
-    console.warn('[Email] No password file at /tmp/email_pass_brajanek');
+    console.warn('[Email] No SMTP_PASS env var and no password file');
     cachedPass = '';
   }
   return cachedPass;
