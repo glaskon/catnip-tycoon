@@ -359,11 +359,11 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add('show');
 
-  // Auto-hide after 3 seconds
+  // Auto-hide after 2 seconds
   toastTimeout = setTimeout(() => {
     toast.classList.remove('show');
     toastTimeout = null;
-  }, 3000);
+  }, 2000);
 }
 
 // ============================================================
