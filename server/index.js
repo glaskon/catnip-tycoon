@@ -23,6 +23,11 @@ app.use(express.json());              // Parse JSON request bodies
 // Serve all frontend assets (index.html, CSS, JS, locales, images, etc.)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Serve reset-password.html without .html extension
+app.get('/reset-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'reset-password.html'));
+});
+
 // --- API Routes ---
 app.use('/api/auth', authRoutes);     // Registration, login, user info
 app.use('/api/save', saveRoutes);     // Save and load game state
