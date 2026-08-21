@@ -144,15 +144,31 @@
   <div id="achievementToast" class="toast">🏆 Achievement Unlocked!</div>
 
   <!-- Debug overlay for development -->
-  <div id="debugOverlay" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#0f0;font:11px monospace;padding:4px 8px;max-height:60px;overflow-y:auto;z-index:9999;display:none;"></div>
+  <div id="debugOverlay" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#0f0;font:11px monospace;padding:4px 8px;max-height:60px;overflow-y:auto;z-index:9999;display:none;pointer-events:none;"></div>
   <script>
+    let debugTimeout = null;
+
     function showDebug(msg) {
+      // On prod (ct.1.booster.rentals): only show for admin
+      const isProd = window.location.hostname === 'ct.1.booster.rentals';
+      if (isProd && !game.isAdmin) return;
+
       const el = document.getElementById('debugOverlay');
       if (!el) return;
+
+      // Clear previous hide timer
+      if (debugTimeout) clearTimeout(debugTimeout);
+
       el.style.display = 'block';
       const t = new Date().toLocaleTimeString();
       el.innerHTML = '[' + t + '] ' + msg + '<br>' + el.innerHTML;
       if (el.children.length > 10) el.removeChild(el.lastChild);
+
+      // Auto-hide after 2 seconds so it doesn't block the UI
+      debugTimeout = setTimeout(() => {
+        el.style.display = 'none';
+        debugTimeout = null;
+      }, 2000);
     }
   </script>
 
