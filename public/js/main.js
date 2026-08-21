@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAchievements();
   loadPurchasedItems();
 
+  // Restore game state from localStorage (works for guests + instant restore)
+  loadLocalGame();
+
   // Set up UI
   initBackground();
   drawCat();
@@ -27,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAuthUI();
   initAdminUI();
 
-  // Try to load game from server if logged in
+  // Try to load game from server if logged in (overwrites local if newer)
   if (api.token) {
     try {
       const me = await api.getMe();

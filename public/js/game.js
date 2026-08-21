@@ -563,36 +563,113 @@ function gameLoop() {
   render();
 }
 
-// Save game state to server
-async function saveGame() {
-  if (!api.token) return; // Don't save if not logged in
+// Save game state to server (and always to localStorage)
+const SAVE_KEY = 'catnip-save';
 
+function buildSaveState() {
+  return {
+    fish: game.fish,
+    fishPerClick: game.fishPerClick,
+    fishPerSecond: game.fishPerSecond,
+    catnip: game.catnip,
+    diamonds: game.diamonds,
+    totalFishEarned: game.totalFishEarned,
+    prestigeCount: game.prestigeCount,
+    speedMultiplier: game.speedMultiplier,
+    elixirs: game.elixirs,
+    anchoredCatId: game.anchoredCatId,
+    preservedUpgradeId: game.preservedUpgradeId,
+    clickCount: game.clickCount,
+    totalCatsBought: game.totalCatsBought,
+    offlineTimeMinutes: game.offlineTimeMinutes,
+    cats: game.cats.map(c => ({ id: c.id, count: c.count })),
+    upgrades: game.upgrades.map(u => ({
+      id: u.id,
+      purchased: u.purchased,
+      level: u.level,
+    })),
+  };
+}
+
+function applyGameState(state) {
+  if (!state || state._fresh) return false;
+
+  game.fish = state.fish || 0;
+  game.fishPerClick = state.fishPerClick || 1;
+  game.fishPerSecond = state.fishPerSecond || 0;
+  game.catnip = state.catnip || 0;
+  game.diamonds = state.diamonds || 0;
+  game.totalFishEarned = state.totalFishEarned || 0;
+  game.prestigeCount = state.prestigeCount || 0;
+  game.speedMultiplier = state.speedMultiplier || 1;
+  game.elixirs = state.elixirs || 0;
+  game.anchoredCatId = state.anchoredCatId || null;
+  game.preservedUpgradeId = state.preservedUpgradeId || null;
+  game.clickCount = state.clickCount || 0;
+  game.totalCatsBought = state.totalCatsBought || 0;
+  game.offlineTimeMinutes = state.offlineTimeMinutes || 60;
+
+  // Restore cats
+  if (state.cats) {
+    for (const savedCat of state.cats) {
+      const cat = game.cats.find(c => c.id === savedCat.id);
+      if (cat) cat.count = savedCat.count || 0;
+    }
+  }
+
+  // Restore upgrades and reapply effects
+  if (state.upgrades) {
+    for (const savedUpg of state.upgrades) {
+      const upg = game.upgrades.find(u => u.id === savedUpg.id);
+      if (!upg) continue;
+
+      if (savedUpg.purchased && upg.type === 'once') {
+        upg.purchased = true;
+        applyUpgradeEffect(upg.id);
+      }
+
+      if (savedUpg.level && upg.type === 'stackable') {
+        upg.level = savedUpg.level;
+        applyUpgradeEffect(upg.id);
+      }
+    }
+  }
+
+  recalcFPS();
+  render();
+  return true;
+}
+
+// Save to both localStorage (always) and server (if logged in)
+async function saveGame() {
+  const state = buildSaveState();
+
+  // Always save to localStorage — guest mode and server backup
   try {
-    const state = {
-      fish: game.fish,
-      fishPerClick: game.fishPerClick,
-      fishPerSecond: game.fishPerSecond,
-      catnip: game.catnip,
-      diamonds: game.diamonds,
-      totalFishEarned: game.totalFishEarned,
-      prestigeCount: game.prestigeCount,
-      speedMultiplier: game.speedMultiplier,
-      elixirs: game.elixirs,
-      anchoredCatId: game.anchoredCatId,
-      preservedUpgradeId: game.preservedUpgradeId,
-      clickCount: game.clickCount,
-      totalCatsBought: game.totalCatsBought,
-      offlineTimeMinutes: game.offlineTimeMinutes,
-      cats: game.cats.map(c => ({ id: c.id, count: c.count })),
-      upgrades: game.upgrades.map(u => ({
-        id: u.id,
-        purchased: u.purchased,
-        level: u.level,
-      })),
-    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('[Game] LocalStorage save failed:', e.message);
+  }
+
+  // Then try server if logged in
+  if (!api.token) return;
+  try {
     await api.saveGameState(state);
   } catch (err) {
-    console.error('[Game] Save failed:', err.message);
+    console.error('[Game] Server save failed:', err.message);
+  }
+}
+
+// Load game state from localStorage (guest mode / instant restore)
+function loadLocalGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    return applyGameState(state);
+  } catch (e) {
+    console.error('[Game] LocalStorage load failed:', e.message);
+    return false;
   }
 }
 
@@ -606,28 +683,15 @@ async function loadGame() {
     const updatedAt = result.updatedAt;
 
     if (!state || state._fresh) {
-      // No save on server yet — start with defaults (already set in game object)
-      console.log('[Game] Fresh account — starting from zero');
+      // No save on server yet — keep whatever localStorage had (or defaults)
+      console.log('[Game] Fresh account — keeping local state');
       recalcFPS();
       render();
       return;
     }
 
-    // Always restore whatever the server has — even if it's all zeros
-    game.fish = state.fish || 0;
-    game.fishPerClick = state.fishPerClick || 1;
-    game.fishPerSecond = state.fishPerSecond || 0;
-    game.catnip = state.catnip || 0;
-    game.diamonds = state.diamonds || 0;
-    game.totalFishEarned = state.totalFishEarned || 0;
-    game.prestigeCount = state.prestigeCount || 0;
-    game.speedMultiplier = state.speedMultiplier || 1;
-    game.elixirs = state.elixirs || 0;
-    game.anchoredCatId = state.anchoredCatId || null;
-    game.preservedUpgradeId = state.preservedUpgradeId || null;
-    game.clickCount = state.clickCount || 0;
-    game.totalCatsBought = state.totalCatsBought || 0;
-    game.offlineTimeMinutes = state.offlineTimeMinutes || 60;
+    // Restore from server state (overwrites any local data)
+    applyGameState(state);
 
     // Calculate offline earnings if we have a last save timestamp
     if (updatedAt) {
@@ -639,58 +703,29 @@ async function loadGame() {
       );
 
       if (offlineSeconds > 30) { // Only show if more than 30s offline
-        // Calculate what would have been earned during offline time
-        // Use FPS at time of save (loaded from state)
         const fps = state.fishPerSecond || 0;
         const catnipRate = state.prestigeCount >= 3 ? 0.01 : 0;
         const offlineFish = fps * offlineSeconds;
         const offlineCatnip = catnipRate * offlineSeconds;
 
-        // Show offline earnings popup — delay slightly to let UI load
         setTimeout(() => {
           const hours = Math.floor(offlineSeconds / 3600);
           const mins = Math.floor((offlineSeconds % 3600) / 60);
           const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-          
           showOfflineEarnings(timeStr, offlineFish, offlineCatnip);
         }, 1000);
 
-        // Award offline earnings
         if (offlineFish > 0) addFish(offlineFish);
         if (offlineCatnip > 0) game.catnip += offlineCatnip;
       }
     }
 
-    // Restore cats
-    if (state.cats) {
-      for (const savedCat of state.cats) {
-        const cat = game.cats.find(c => c.id === savedCat.id);
-        if (cat) cat.count = savedCat.count || 0;
-      }
+    // Save server state to localStorage too (so guest has it if they log out later)
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(buildSaveState()));
+    } catch (e) {
+      // ignore storage errors
     }
-
-    // Restore upgrades and reapply effects
-    if (state.upgrades) {
-      for (const savedUpg of state.upgrades) {
-        const upg = game.upgrades.find(u => u.id === savedUpg.id);
-        if (!upg) continue;
-
-        // Restore once-type
-        if (savedUpg.purchased && upg.type === 'once') {
-          upg.purchased = true;
-          applyUpgradeEffect(upg.id);
-        }
-
-        // Restore stackable level
-        if (savedUpg.level && upg.type === 'stackable') {
-          upg.level = savedUpg.level;
-          applyUpgradeEffect(upg.id);
-        }
-      }
-    }
-
-    recalcFPS();
-    render();
   } catch (err) {
     console.error('[Game] Load failed:', err.message);
   }
@@ -742,6 +777,7 @@ window.getCatnipNeeded = getCatnipNeeded;
 window.calculatePrestigeReward = calculatePrestigeReward;
 window.saveGame = saveGame;
 window.loadGame = loadGame;
+window.loadLocalGame = loadLocalGame;
 window.startGameLoops = startGameLoops;
 window.addFish = addFish;
 window.spendFish = spendFish;
