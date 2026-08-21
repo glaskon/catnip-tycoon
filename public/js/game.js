@@ -588,6 +588,9 @@ function buildSaveState() {
       purchased: u.purchased,
       level: u.level,
     })),
+    achievements: ACHIEVEMENTS.filter(a => a.earned).map(a => a.id),
+    purchasedItems: window.purchasedItems || [],
+    shopCounts: window.shopCounts || {},
   };
 }
 
@@ -633,6 +636,26 @@ function applyGameState(state) {
         applyUpgradeEffect(upg.id);
       }
     }
+  }
+
+  // Restore achievements from save (without re-awarding rewards)
+  if (state.achievements && Array.isArray(state.achievements)) {
+    for (const achId of state.achievements) {
+      const ach = ACHIEVEMENTS.find(a => a.id === achId);
+      if (ach) ach.earned = true;
+    }
+    // Sync to localStorage too
+    localStorage.setItem('catnip-achievements', JSON.stringify(state.achievements));
+  }
+
+  // Restore shop purchased items
+  if (state.purchasedItems && Array.isArray(state.purchasedItems)) {
+    window.purchasedItems = state.purchasedItems;
+    localStorage.setItem('catnip-purchased', JSON.stringify(state.purchasedItems));
+  }
+  if (state.shopCounts && typeof state.shopCounts === 'object') {
+    window.shopCounts = state.shopCounts;
+    localStorage.setItem('catnip-shopcounts', JSON.stringify(state.shopCounts));
   }
 
   recalcFPS();

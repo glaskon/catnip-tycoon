@@ -232,12 +232,14 @@ function saveAchievements() {
 
 // Check all achievements and award any newly completed ones
 function checkAchievements() {
+  let newlyEarned = false;
   for (const ach of ACHIEVEMENTS) {
     if (ach.earned) continue;
 
     if (ach.condition()) {
       ach.earned = true;
       saveAchievements();
+      newlyEarned = true;
 
       // Award the reward
       if (ach.reward.fish) {
@@ -251,6 +253,11 @@ function checkAchievements() {
       const name = i18n.t(ach.nameKey, ach.id);
       showToast(`🏆 ${name}`);
     }
+  }
+
+  // Trigger server save immediately if any achievements earned
+  if (newlyEarned) {
+    saveGame();
   }
 }
 
