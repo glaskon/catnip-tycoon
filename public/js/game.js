@@ -21,7 +21,7 @@ const game = {
   totalCatsBought: 0,
 
   // --- Offline time ---
-  offlineTimeMinutes: 120, // Default 2 hours — can be extended via shop
+  offlineTimeMinutes: 60, // Default 1 hour — can be extended via shop
 
   // --- Collections ---
   cats: [],
@@ -627,7 +627,7 @@ async function loadGame() {
     game.preservedUpgradeId = state.preservedUpgradeId || null;
     game.clickCount = state.clickCount || 0;
     game.totalCatsBought = state.totalCatsBought || 0;
-    game.offlineTimeMinutes = state.offlineTimeMinutes || 120;
+    game.offlineTimeMinutes = state.offlineTimeMinutes || 60;
 
     // Calculate offline earnings if we have a last save timestamp
     if (updatedAt) {
