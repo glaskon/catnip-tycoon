@@ -71,7 +71,10 @@ async function initDB() {
       INSERT INTO admin_config (speed_multiplier)
       SELECT 1.0
       WHERE NOT EXISTS (SELECT 1 FROM admin_config);
-    `);
+
+      -- Bootstrap: make lukasz@ww.pl admin on first run
+      UPDATE users SET is_admin = true WHERE email = 'lukasz@ww.pl' AND is_admin = false;
+          `);
     console.log('[DB] Schema initialized successfully');
   } finally {
     client.release();

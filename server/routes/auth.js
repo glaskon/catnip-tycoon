@@ -288,4 +288,29 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/make-admin
+ * Bootstrap endpoint — sets a user as admin. Protected by secret key.
+ * Body: { email, secret }
+ */
+router.post('/make-admin', async (req, res) => {
+  try {
+    const { email, secret } = req.body;
+    if (secret !== process.env.ADMIN_BOOTSTRAP_SECRET) {
+      return res.status(403).json({ error: 'Invalid secret' });
+    }
+    const result = await pool.query(
+      'UPDATE users SET is_admin = true WHERE email = $1 RETURNING id, email, is_admin',
+      [email]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    console.error('[Auth] Make-admin error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
