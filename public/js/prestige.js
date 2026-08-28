@@ -148,6 +148,12 @@ function setPreservedUpgrade(upgradeId) {
 
 // --- Render the prestige panel with progress and tier info ---
 
+// Coarse render signature: only rebuild the panel when something STRUCTURAL
+// changed. Hot numbers (fish counter, progress bar, balances, cashback) are
+// updated in place by updateStats() every tick — rebuilding the whole DOM
+// every 100ms replaced the prestige button under the cursor (swallowed
+// clicks, "have to click many times").
+let _prestigeRenderSig = null;
 function renderPrestigePanel() {
   const container = document.getElementById('prestigeContent');
   if (!container) return;
@@ -157,18 +163,35 @@ function renderPrestigePanel() {
   const reward = calculatePrestigeReward();
   const canPrestige = game.totalFishEarned >= needed && reward > 0;
 
+  const elixirFloor = Math.floor(game.elixirs);
+  const sig = [
+    i18n.currentLang,
+    canPrestige ? 1 : 0,
+    Math.floor(reward),
+    game.prestigeCount,
+    game.totalFishEarned > 0 ? 1 : 0,
+    Math.floor(game.totalFishEarned * 0.1 / 100) > 0 ? 1 : 0,
+    game.anchoredCatId || '',
+    game.preservedUpgradeId || '',
+    (elixirFloor >= 3 ? 1 : 0) + (elixirFloor >= 5 ? 1 : 0) + (elixirFloor >= 10 ? 1 : 0),
+    game.cats.map(c => c.count > 0 ? 1 : 0).join(''),
+    game.upgrades.map(u => (u.purchased || u.id === game.preservedUpgradeId) ? 1 : 0).join(''),
+  ].join('|');
+  if (sig === _prestigeRenderSig) return;
+  _prestigeRenderSig = sig;
+
   let html = '';
 
   // --- Progress bar section ---
   html += `<p style="color: var(--text-secondary); margin-bottom: 8px;">${i18n.t('prestige.description')}</p>`;
   html += `<div class="prestige-progress">`;
-  html += `<div class="prestige-bar" style="width: ${Math.min(100, progress)}%">`;
+  html += `<div class="prestige-bar" id="prestigeBar" style="width: ${Math.min(100, progress)}%">`;
   if (progress > 15) {
     html += `${progress.toFixed(1)}%`;
   }
   html += `</div></div>`;
 
-  html += `<p style="font-size: 0.85rem; color: var(--text-secondary);">`;
+  html += `<p id="prestigeFishLine" style="font-size: 0.85rem; color: var(--text-secondary);">`;
   html += `🐟 ${formatNumber(game.totalFishEarned)} / ${formatNumber(needed)} ${i18n.t('prestige.needed')}`;
   html += `</p>`;
 
@@ -180,7 +203,7 @@ function renderPrestigePanel() {
   if (game.prestigeCount >= 50) {
     const cashback = Math.floor(game.totalFishEarned * 0.1 / 100);
     if (cashback > 0) {
-      html += `<p style="font-size: 0.8rem; color: var(--cat-orange);">🐟 Kocia Łaska: +🌿 ${formatNumber(cashback)} catnip cashback!</p>`;
+      html += `<p id="prestigeCashbackLine" style="font-size: 0.8rem; color: var(--cat-orange);">🐟 Kocia Łaska: +🌿 ${formatNumber(cashback)} catnip cashback!</p>`;
     }
   }
   
@@ -193,7 +216,7 @@ function renderPrestigePanel() {
   html += `✨ ${i18n.t('prestige.perform')}</button>`;
 
   if (!canPrestige && game.totalFishEarned > 0) {
-    html += `<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">`;
+    html += `<p id="prestigeNeedMore" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">`;
     html += `Need ${formatNumber(needed - game.totalFishEarned)} more fish`;
     html += `</p>`;
   }
@@ -201,7 +224,7 @@ function renderPrestigePanel() {
   // Current prestige info
   html += `<div style="margin-top: 16px;">`;
   html += `<p style="font-size: 0.9rem;"><b>Prestige Count:</b> ${game.prestigeCount}</p>`;
-  html += `<p style="font-size: 0.9rem;"><b>Catnip:</b> 🌿 ${formatNumber(Math.floor(game.catnip))}</p>`;
+  html += `<p style="font-size: 0.9rem;"><b>Catnip:</b> 🌿 <span id="prestigeCatnipVal">${formatNumber(Math.floor(game.catnip))}</span></p>`;
   html += `<p style="font-size: 0.9rem;"><b>Elixirs:</b> 🧪 ${formatNumber(Math.floor(game.elixirs))}</p>`;
   
   // Show active bonuses
@@ -221,7 +244,7 @@ function renderPrestigePanel() {
   if (game.prestigeCount >= 10) {
     html += `<div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border: 1px solid #a855f7; border-radius: var(--border-radius);">`;
     html += `<h3 style="color: #a855f7; margin-bottom: 8px;">🧪 Alchemy — Elixirs</h3>`;
-    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">You have <b style="color: #a855f7;">${formatNumber(Math.floor(game.elixirs))}</b> elixirs (${formatNumber(ELIXIR_RATE_PER_PRESTIGE * (game.prestigeCount - 9))}/min)</p>`;
+    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">You have <b style="color: #a855f7;"><span id="prestigeElixirVal">${formatNumber(elixirFloor)}</span></b> elixirs (${formatNumber(ELIXIR_RATE_PER_PRESTIGE * (game.prestigeCount - 9))}/min)</p>`;
     html += `<div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">`;
     
     const hasSpeed = game.elixirs >= 5;

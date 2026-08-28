@@ -242,6 +242,37 @@ function updateStats() {
   document.getElementById('catnipCount').textContent = formatNumber(Math.floor(game.catnip));
   document.getElementById('diamondCount').textContent = formatNumber(Math.floor(game.diamonds));
   renderTopBar();
+
+  // Prestige panel hot numbers — updated in place (no DOM rebuild) so the
+  // prestige button is never replaced mid-click. The ids only exist while
+  // the prestige panel is built and visible.
+  const prestigeBar = document.getElementById('prestigeBar');
+  if (prestigeBar && typeof getCatnipNeeded === 'function') {
+    const needed = getCatnipNeeded();
+    const pct = Math.min(100, (game.totalFishEarned / needed) * 100);
+    prestigeBar.style.width = pct + '%';
+    prestigeBar.textContent = pct > 15 ? pct.toFixed(1) + '%' : '';
+  }
+  const prestigeFishLine = document.getElementById('prestigeFishLine');
+  if (prestigeFishLine) {
+    prestigeFishLine.textContent = `🐟 ${formatNumber(game.totalFishEarned)} / ${formatNumber(getCatnipNeeded())} ${i18n.t('prestige.needed')}`;
+  }
+  const prestigeNeedMore = document.getElementById('prestigeNeedMore');
+  if (prestigeNeedMore) {
+    prestigeNeedMore.textContent = `Need ${formatNumber(Math.max(0, getCatnipNeeded() - game.totalFishEarned))} more fish`;
+  }
+  const prestigeCashbackLine = document.getElementById('prestigeCashbackLine');
+  if (prestigeCashbackLine) {
+    prestigeCashbackLine.textContent = `🐟 Kocia Łaska: +🌿 ${formatNumber(Math.floor(game.totalFishEarned * 0.1 / 100))} catnip cashback!`;
+  }
+  const prestigeCatnipVal = document.getElementById('prestigeCatnipVal');
+  if (prestigeCatnipVal) {
+    prestigeCatnipVal.textContent = formatNumber(Math.floor(game.catnip));
+  }
+  const prestigeElixirVal = document.getElementById('prestigeElixirVal');
+  if (prestigeElixirVal) {
+    prestigeElixirVal.textContent = formatNumber(Math.floor(game.elixirs));
+  }
 }
 
 // Update the top bar resource display
