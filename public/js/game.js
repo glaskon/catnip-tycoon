@@ -425,7 +425,9 @@ function applyUpgradeEffect(upgradeId) {
 
 // Calculate how many fish are needed for next prestige
 function getCatnipNeeded() {
-  return 10000 * (game.prestigeCount + 1);
+  // 2x buffer on top of the base 10k: prestige is only available once the
+  // player is well past the base threshold (not "just as soon as possible").
+  return 2 * 10000 * (game.prestigeCount + 1);
 }
 
 // Calculate how much catnip the player would earn from prestige
