@@ -610,7 +610,7 @@ function applyGameState(state) {
   game.preservedUpgradeId = state.preservedUpgradeId || null;
   game.clickCount = state.clickCount || 0;
   game.totalCatsBought = state.totalCatsBought || 0;
-  game.offlineTimeMinutes = state.offlineTimeMinutes || 60;
+  game.offlineTimeMinutes = Math.min(state.offlineTimeMinutes || 60, OFFLINE_MAX_MIN);
 
   // Restore cats
   if (state.cats) {
@@ -720,8 +720,9 @@ async function loadGame() {
     if (updatedAt) {
       const lastSave = new Date(updatedAt).getTime();
       const now = Date.now();
+      const rawAwaySeconds = (now - lastSave) / 1000;
       const offlineSeconds = Math.min(
-        (now - lastSave) / 1000,
+        rawAwaySeconds,
         game.offlineTimeMinutes * 60
       );
 
@@ -735,7 +736,7 @@ async function loadGame() {
           const hours = Math.floor(offlineSeconds / 3600);
           const mins = Math.floor((offlineSeconds % 3600) / 60);
           const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-          showOfflineEarnings(timeStr, offlineFish, offlineCatnip);
+          showOfflineEarnings(timeStr, rawAwaySeconds, fps, catnipRate);
         }, 1000);
 
         if (offlineFish > 0) addFish(offlineFish);
@@ -761,8 +762,103 @@ function startGameLoops() {
   game.autoSaveInterval = setInterval(saveGame, 30000); // Auto-save every 30 seconds
 }
 
+// --- Offline time purchase (zmiana: +30 min increments, 6h cap) ---
+const OFFLINE_STEP_MIN = 30;
+const OFFLINE_MAX_MIN = 360; // 6h cap
+const OFFLINE_COST_CATNIP = 15;
+const OFFLINE_COST_DIAMOND = 8;
+
+// Offline earnings context — kept so buying more time can retroactively
+// top up earnings for the extra window (if the player was away longer)
+let _offlineAwaySeconds = 0;
+let _offlineFps = 0;
+let _offlineCatnipRate = 0;
+
+// Recalculate displayed offline totals + button states for the current window
+function updateOfflinePopup() {
+  const fishEl = document.getElementById('offlineFishTotal');
+  if (!fishEl) return;
+
+  const secs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
+  const fish = _offlineFps * secs;
+  const catnip = _offlineCatnipRate * secs;
+  fishEl.textContent = formatNumber(Math.floor(fish));
+
+  const catnipLine = document.getElementById('offlineCatnipLine');
+  if (catnip > 0) {
+    catnipLine.style.display = '';
+    document.getElementById('offlineCatnipTotal').textContent = formatNumber(Math.floor(catnip));
+  } else {
+    catnipLine.style.display = 'none';
+  }
+
+  const h = Math.floor(game.offlineTimeMinutes / 60);
+  const m = game.offlineTimeMinutes % 60;
+  const cur = m > 0 ? `${h}h ${m}m` : `${h}h`;
+  document.getElementById('offlineWindowInfo').textContent =
+    `${i18n.t('offline.window')}: ${cur} / ${i18n.t('offline.max')} ${OFFLINE_MAX_MIN / 60}h`;
+
+  const buyRow = document.getElementById('offlineBuyRow');
+  if (game.offlineTimeMinutes >= OFFLINE_MAX_MIN) {
+    buyRow.innerHTML = `<p style="font-size: 0.75rem; color: var(--success); margin-top: 8px;">✅ ${i18n.t('offline.maxReached')}</p>`;
+  } else {
+    document.getElementById('offlineBuyCatnip').disabled = game.catnip < OFFLINE_COST_CATNIP;
+    document.getElementById('offlineBuyDiamond').disabled = game.diamonds < OFFLINE_COST_DIAMOND;
+  }
+}
+
+// Buy +30 min of offline window. Retroactively grants earnings for the extra
+// time if the player was away longer than the old window allowed.
+function buyOfflineTime(currency) {
+  if (game.offlineTimeMinutes >= OFFLINE_MAX_MIN) {
+    showDebug('buyOfflineTime: window at max ' + OFFLINE_MAX_MIN + ' min');
+    return false;
+  }
+  const cost = currency === 'catnip' ? OFFLINE_COST_CATNIP : OFFLINE_COST_DIAMOND;
+  if (currency === 'catnip') {
+    if (game.catnip < cost) {
+      showDebug('buyOfflineTime: cannot afford ' + cost + ' catnip (have ' + game.catnip.toFixed(1) + ')');
+      return false;
+    }
+    game.catnip -= cost;
+  } else {
+    if (game.diamonds < cost) {
+      showDebug('buyOfflineTime: cannot afford ' + cost + ' diamonds (have ' + Math.floor(game.diamonds) + ')');
+      return false;
+    }
+    game.diamonds -= cost;
+  }
+
+  const oldSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
+  game.offlineTimeMinutes += OFFLINE_STEP_MIN;
+  const newSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
+
+  showDebug('buyOfflineTime: +' + OFFLINE_STEP_MIN + ' min (window now ' + game.offlineTimeMinutes + ' min), paid ' + cost + ' ' + currency);
+
+  // Retroactive top-up for the extra window
+  const gainedSecs = newSecs - oldSecs;
+  if (gainedSecs > 0) {
+    const gainedFish = _offlineFps * gainedSecs;
+    const gainedCatnip = _offlineCatnipRate * gainedSecs;
+    if (gainedFish > 0) addFish(gainedFish);
+    if (gainedCatnip > 0) game.catnip += gainedCatnip;
+    if (gainedFish > 0 || gainedCatnip > 0) {
+      showToast(`⏱️ +${Math.floor(gainedSecs / 60)} min offline — 🐟 +${formatNumber(Math.floor(gainedFish))}`);
+    }
+  }
+
+  updateOfflinePopup();
+  saveGame();
+  render();
+  return true;
+}
+
 // Show offline earnings popup
-function showOfflineEarnings(timeAway, fish, catnip) {
+function showOfflineEarnings(timeAway, awaySeconds, fps, catnipRate) {
+  _offlineAwaySeconds = awaySeconds;
+  _offlineFps = fps;
+  _offlineCatnipRate = catnipRate;
+
   // Remove existing popup if any
   const existing = document.getElementById('offlinePopup');
   if (existing) existing.remove();
@@ -774,10 +870,14 @@ function showOfflineEarnings(timeAway, fish, catnip) {
       <h3 style="color: var(--cat-orange); margin-bottom: 8px;">🐱 Welcome Back!</h3>
       <p style="font-size: 0.85rem; color: var(--text-secondary);">You were away for <b>${timeAway}</b></p>
       <div style="margin: 12px 0;">
-        <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);">${formatNumber(Math.floor(fish))}</b> fish earned</p>
-        ${catnip > 0 ? `<p style="font-size: 1rem;">🌿 <b style="color: var(--cat-orange);">${formatNumber(Math.floor(catnip))}</b> catnip earned</p>` : ''}
+        <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);" id="offlineFishTotal">0</b> fish earned</p>
+        <p style="font-size: 1rem;" id="offlineCatnipLine">🌿 <b style="color: var(--cat-orange);" id="offlineCatnipTotal">0</b> catnip earned</p>
       </div>
-      <p style="font-size: 0.75rem; color: var(--text-muted);">Offline time: ${formatNumber(game.offlineTimeMinutes / 60)}h / ${game.offlineTimeMinutes} min max</p>
+      <p style="font-size: 0.75rem; color: var(--text-muted);" id="offlineWindowInfo"></p>
+      <div id="offlineBuyRow" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
+        <button class="btn btn-sm" id="offlineBuyCatnip" onclick="buyOfflineTime('catnip')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_CATNIP}🌿)</button>
+        <button class="btn btn-sm" id="offlineBuyDiamond" onclick="buyOfflineTime('diamond')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_DIAMOND}💎)</button>
+      </div>
       <button class="btn btn-primary" onclick="document.getElementById('offlinePopup').remove()" style="margin-top: 8px;">Collect</button>
     </div>
   `;
@@ -787,6 +887,7 @@ function showOfflineEarnings(timeAway, fish, catnip) {
   popup.onclick = (e) => { if (e.target === popup) popup.remove(); };
 
   document.body.appendChild(popup);
+  updateOfflinePopup();
 }
 
 // Expose game to global scope
@@ -808,3 +909,4 @@ window.recalcFPS = recalcFPS;
 window.hasUpgrade = hasUpgrade;
 window.getUpgradeLevel = getUpgradeLevel;
 window.getCatCost = getCatCost;
+window.buyOfflineTime = buyOfflineTime;
