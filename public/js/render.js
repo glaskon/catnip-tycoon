@@ -257,9 +257,23 @@ function renderTopBar() {
 }
 
 // Render cats panel
+let _catsRenderSig = null;
 function renderCats() {
   const container = document.getElementById('catList');
   if (!container) return;
+
+  // Skip full DOM rebuild when nothing changed. Rebuilding innerHTML every 100ms
+  // tick replaced buy buttons mid-click (mousedown on old node, mouseup on new
+  // node = no click event), so purchases needed several clicks.
+  let sig = i18n.currentLang;
+  for (let i = 0; i < game.cats.length; i++) {
+    const c = game.cats[i];
+    const cost = c.currentCost;
+    const afford = c.currency === 'catnip' ? game.catnip >= cost : game.fish >= cost;
+    sig += '|' + c.count + ':' + (afford ? 1 : 0) + ':' + (c.unlocked ? 1 : 0);
+  }
+  if (sig === _catsRenderSig) return;
+  _catsRenderSig = sig;
 
   let html = '';
   for (let i = 0; i < game.cats.length; i++) {
@@ -293,9 +307,24 @@ function renderCats() {
 }
 
 // Render upgrades panel
+let _upgradesRenderSig = null;
 function renderUpgrades() {
   const container = document.getElementById('upgradeList');
   if (!container) return;
+
+  // Same click-swallowing fix as renderCats: only rebuild when state changes
+  let sig = i18n.currentLang;
+  for (let i = 0; i < game.upgrades.length; i++) {
+    const u = game.upgrades[i];
+    const isStackable = u.type === 'stackable';
+    const cost = isStackable ? u.currentCost : u.cost;
+    const afford = u.currency === 'fish' ? game.fish >= cost
+      : u.currency === 'catnip' ? game.catnip >= cost
+      : game.diamonds >= cost;
+    sig += '|' + (isStackable ? u.level : (u.purchased ? 1 : 0)) + ':' + (afford ? 1 : 0);
+  }
+  if (sig === _upgradesRenderSig) return;
+  _upgradesRenderSig = sig;
 
   let html = '';
   for (let i = 0; i < game.upgrades.length; i++) {
