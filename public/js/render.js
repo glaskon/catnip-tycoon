@@ -260,29 +260,34 @@ function renderTopBar() {
 // the fresh nodes under a stationary cursor (border "blink"). We track the
 // hovered card index on the container (survives rebuilds) and re-apply a
 // .card-hovered class after every rebuild.
-function initCardHoverTracking(container) {
+// selector/cls are parameterized so shop items (non-.card) get the same treatment.
+function initCardHoverTracking(container, selector, cls) {
+  selector = selector || '.card';
+  cls = cls || 'card-hovered';
   if (container._hoverTracked) return;
   container._hoverTracked = true;
   container._hoveredCardIdx = -1;
   container.addEventListener('mousemove', (e) => {
-    const card = e.target.closest('.card');
-    container.querySelectorAll('.card-hovered').forEach(c => c.classList.remove('card-hovered'));
+    const card = e.target.closest(selector);
+    container.querySelectorAll('.' + cls).forEach(c => c.classList.remove(cls));
     if (card) {
       container._hoveredCardIdx = Array.prototype.indexOf.call(container.children, card);
-      card.classList.add('card-hovered');
+      card.classList.add(cls);
     } else {
       container._hoveredCardIdx = -1;
     }
   });
   container.addEventListener('mouseleave', () => {
     container._hoveredCardIdx = -1;
-    container.querySelectorAll('.card-hovered').forEach(c => c.classList.remove('card-hovered'));
+    container.querySelectorAll('.' + cls).forEach(c => c.classList.remove(cls));
   });
 }
 
-function restoreCardHover(container) {
+function restoreCardHover(container, selector, cls) {
+  selector = selector || '.card';
+  cls = cls || 'card-hovered';
   if (container._hoveredCardIdx >= 0 && container.children[container._hoveredCardIdx]) {
-    container.children[container._hoveredCardIdx].classList.add('card-hovered');
+    container.children[container._hoveredCardIdx].classList.add(cls);
   }
 }
 

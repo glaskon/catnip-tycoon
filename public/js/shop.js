@@ -148,9 +148,28 @@ function getShopItemCount(itemId) {
 }
 
 // Render the shop grid
+let _shopRenderSig = null;
 function renderShop() {
   const container = document.getElementById('shopContent');
   if (!container) return;
+
+  // Same click-swallowing + hover-blink fix as renderCats/renderUpgrades:
+  // only rebuild the DOM when something actually changed. Rebuilding every
+  // 100ms tick dropped :hover (blinking border) and replaced buy buttons
+  // mid-click (swallowed clicks).
+  let sig = i18n.currentLang;
+  for (const item of SHOP_ITEMS) {
+    const owned = !isItemStackable(item) && hasItem(item.id);
+    const count = getShopItemCount(item.id);
+    const cost = getShopItemCost(item);
+    const afford = item.currency === 'diamonds' ? game.diamonds >= cost
+      : item.currency === 'catnip' ? game.catnip >= cost
+      : game.fish >= cost;
+    sig += '|' + (owned ? 1 : 0) + ':' + count + ':' + (afford ? 1 : 0);
+  }
+  sig += '|' + Math.floor(game.diamonds);
+  if (sig === _shopRenderSig) return;
+  _shopRenderSig = sig;
 
   let html = '<div class="shop-grid">';
 
@@ -200,6 +219,14 @@ function renderShop() {
   html += `</div>`;
 
   container.innerHTML = html;
+
+  // Stable hover for shop items (same as cards) — border must not blink
+  // after a rebuild while the cursor sits on an item.
+  const grid = container.querySelector('.shop-grid');
+  if (grid) {
+    initCardHoverTracking(grid, '.shop-item', 'shop-item-hovered');
+    restoreCardHover(grid, '.shop-item', 'shop-item-hovered');
+  }
 }
 
 // Buy a shop item

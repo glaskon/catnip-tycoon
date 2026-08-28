@@ -468,7 +468,8 @@ html, body {
   transition: border-color var(--transition);
 }
 
-.shop-item:hover {
+.shop-item:hover,
+.shop-item.shop-item-hovered {
   border-color: var(--cat-orange);
 }
 
