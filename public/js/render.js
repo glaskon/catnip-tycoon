@@ -334,6 +334,11 @@ function renderCats() {
   // node = no click event), so purchases needed several clicks.
   let sig = i18n.currentLang;
   for (let i = 0; i < game.cats.length; i++) {
+    // Progressive reveal: a cat is only visible after the previous cat has
+    // been bought at least once (first cat always visible). Resets with
+    // prestige — part of the new run.
+    const visible = i === 0 || game.cats[i - 1].count > 0;
+    if (!visible) { sig += '|x'; continue; }
     const c = game.cats[i];
     const cost = c.currentCost;
     const afford = c.currency === 'catnip' ? game.catnip >= cost : game.fish >= cost;
@@ -344,6 +349,8 @@ function renderCats() {
 
   let html = '';
   for (let i = 0; i < game.cats.length; i++) {
+    const visible = i === 0 || game.cats[i - 1].count > 0;
+    if (!visible) continue;
     const cat = game.cats[i];
     const name = i18n.t(cat.nameKey, cat.id);
     const cost = cat.currentCost;
