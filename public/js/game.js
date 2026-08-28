@@ -46,14 +46,14 @@ const game = {
 // Cat definitions
 // ============================================================
 const CAT_DEFINITIONS = [
-  { id: 'dachowiec', nameKey: 'cats.dachowiec', baseCost: 5, baseProduction: 0.5, costGrowth: 1.15 },
-  { id: 'rudzielec', nameKey: 'cats.rudzielec', baseCost: 50, baseProduction: 2, costGrowth: 1.15 },
-  { id: 'syjamski', nameKey: 'cats.syjamski', baseCost: 200, baseProduction: 8, costGrowth: 1.15 },
-  { id: 'perski', nameKey: 'cats.perski', baseCost: 1000, baseProduction: 40, costGrowth: 1.15 },
-  { id: 'bengalski', nameKey: 'cats.bengalski', baseCost: 5000, baseProduction: 200, costGrowth: 1.15 },
-  { id: 'sfinks', nameKey: 'cats.sfinks', baseCost: 25000, baseProduction: 1000, costGrowth: 1.15 },
-  { id: 'mainecoon', nameKey: 'cats.mainecoon', baseCost: 100000, baseProduction: 5000, costGrowth: 1.15 },
-  { id: 'kotmag', nameKey: 'cats.kotmag', baseCost: 500000, baseProduction: 25000, costGrowth: 1.20, requiresPrestige: 1 },
+  { id: 'dachowiec', nameKey: 'cats.dachowiec', baseCost: 15, baseProduction: 0.5, costGrowth: 1.15 },
+  { id: 'rudzielec', nameKey: 'cats.rudzielec', baseCost: 100, baseProduction: 2, costGrowth: 1.15 },
+  { id: 'syjamski', nameKey: 'cats.syjamski', baseCost: 1100, baseProduction: 8, costGrowth: 1.15 },
+  { id: 'perski', nameKey: 'cats.perski', baseCost: 12000, baseProduction: 40, costGrowth: 1.15 },
+  { id: 'bengalski', nameKey: 'cats.bengalski', baseCost: 130000, baseProduction: 200, costGrowth: 1.15 },
+  { id: 'sfinks', nameKey: 'cats.sfinks', baseCost: 1400000, baseProduction: 1000, costGrowth: 1.15 },
+  { id: 'mainecoon', nameKey: 'cats.mainecoon', baseCost: 20000000, baseProduction: 5000, costGrowth: 1.15 },
+  { id: 'kotmag', nameKey: 'cats.kotmag', baseCost: 330000000, baseProduction: 25000, costGrowth: 1.20, requiresPrestige: 1 },
   { id: 'kotfeniks', nameKey: 'cats.kotfeniks', baseCost: 100, baseProduction: 1000000, costGrowth: 1.50, requiresPrestige: 20, currency: 'catnip' },
 ];
 
