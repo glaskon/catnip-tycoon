@@ -367,8 +367,10 @@ html, body {
   transition: border-color var(--transition), background var(--transition);
 }
 
-.card:hover {
+.card:hover,
+.card.card-hovered {
   border-color: var(--cat-orange);
+  background: var(--bg-tertiary);
 }
 
 .card.unlocked {

@@ -256,11 +256,42 @@ function renderTopBar() {
   if (resDiamonds) resDiamonds.textContent = formatNumber(Math.floor(game.diamonds));
 }
 
+// Stable hover highlight: after an innerHTML rebuild the browser drops :hover on
+// the fresh nodes under a stationary cursor (border "blink"). We track the
+// hovered card index on the container (survives rebuilds) and re-apply a
+// .card-hovered class after every rebuild.
+function initCardHoverTracking(container) {
+  if (container._hoverTracked) return;
+  container._hoverTracked = true;
+  container._hoveredCardIdx = -1;
+  container.addEventListener('mousemove', (e) => {
+    const card = e.target.closest('.card');
+    container.querySelectorAll('.card-hovered').forEach(c => c.classList.remove('card-hovered'));
+    if (card) {
+      container._hoveredCardIdx = Array.prototype.indexOf.call(container.children, card);
+      card.classList.add('card-hovered');
+    } else {
+      container._hoveredCardIdx = -1;
+    }
+  });
+  container.addEventListener('mouseleave', () => {
+    container._hoveredCardIdx = -1;
+    container.querySelectorAll('.card-hovered').forEach(c => c.classList.remove('card-hovered'));
+  });
+}
+
+function restoreCardHover(container) {
+  if (container._hoveredCardIdx >= 0 && container.children[container._hoveredCardIdx]) {
+    container.children[container._hoveredCardIdx].classList.add('card-hovered');
+  }
+}
+
 // Render cats panel
 let _catsRenderSig = null;
 function renderCats() {
   const container = document.getElementById('catList');
   if (!container) return;
+  initCardHoverTracking(container);
 
   // Skip full DOM rebuild when nothing changed. Rebuilding innerHTML every 100ms
   // tick replaced buy buttons mid-click (mousedown on old node, mouseup on new
@@ -304,6 +335,7 @@ function renderCats() {
     html += `</div>`;
   }
   container.innerHTML = html;
+  restoreCardHover(container);
 }
 
 // Render upgrades panel
@@ -311,6 +343,7 @@ let _upgradesRenderSig = null;
 function renderUpgrades() {
   const container = document.getElementById('upgradeList');
   if (!container) return;
+  initCardHoverTracking(container);
 
   // Same click-swallowing fix as renderCats: only rebuild when state changes
   let sig = i18n.currentLang;
@@ -372,6 +405,7 @@ function renderUpgrades() {
     html += `</div>`;
   }
   container.innerHTML = html;
+  restoreCardHover(container);
 }
 
 // Main render function - updates all visible UI
