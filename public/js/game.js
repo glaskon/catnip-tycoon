@@ -78,7 +78,7 @@ const UPGRADE_DEFINITIONS = [
 
   // New — catnip upgrades
   { id: 'superkarmnik', nameKey: 'upgrades.superkarmnik', descKey: 'upgrades.superkarmnikDesc', effect: 'superKarmnik', cost: 50, currency: 'catnip', type: 'once' },
-  { id: 'catnipclick', nameKey: 'upgrades.catnipclick', descKey: 'upgrades.catnipclickDesc', effect: 'catnipClick', cost: 10, currency: 'catnip', type: 'once' },
+  { id: 'catnipclick', nameKey: 'upgrades.catnipclick', descKey: 'upgrades.catnipclickDesc', effect: 'catnipClick', baseCost: 10, currency: 'catnip', type: 'stackable', costGrowth: 5 },
   { id: 'catnipmastery', nameKey: 'upgrades.catnipmastery', descKey: 'upgrades.catnipmasteryDesc', effect: 'catnipMastery', cost: 100, currency: 'catnip', type: 'once' },
   { id: 'elixirmastery', nameKey: 'upgrades.elixirmastery', descKey: 'upgrades.elixirmasteryDesc', effect: 'elixirMastery', cost: 25, currency: 'catnip', type: 'once' },
   { id: 'prestigeBoost', nameKey: 'upgrades.prestigeBoost', descKey: 'upgrades.prestigeBoostDesc', effect: 'prestigeBoost', cost: 200, currency: 'catnip', type: 'once' },
@@ -263,9 +263,21 @@ function clickCat(event) {
   addFish(clickValue);
   game.clickCount++;
 
-  // CatnipClick: +0.1 catnip per click
-  if (hasUpgrade('catnipclick')) {
-    game.catnip += 0.1;
+  // Lucky Catnip Click: base 1/100,000 per click, each level raises the
+  // chance gently (×1.05, ×1.06, ×1.10... — same ramp as Diamond Luck)
+  const catnipClickLevel = getUpgradeLevel('catnipclick');
+  if (catnipClickLevel > 0) {
+    let catnipDropRate = 0.00001;
+    const ccMultipliers = [1.05, 1.06, 1.10, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40, 1.50];
+    for (let i = 0; i < Math.min(catnipClickLevel - 1, ccMultipliers.length); i++) {
+      catnipDropRate *= ccMultipliers[i];
+    }
+    if (Math.random() < catnipDropRate) {
+      game.catnip += 25;
+      if (typeof showToast === 'function') {
+        showToast('🍀 ' + i18n.t('toasts.luckyCatnip', 'Lucky Catnip! +25🌿'));
+      }
+    }
   }
 
   // Diamond drops: base 0.0001% (1/1,000,000) per click
@@ -635,6 +647,16 @@ function applyGameState(state) {
         upg.level = savedUpg.level;
         applyUpgradeEffect(upg.id);
       }
+    }
+  }
+
+  // Migration: catnipclick used to be once-type (+0.1 catnip/click).
+  // It is now stackable (Lucky Catnip Click) — old purchases become level 1.
+  const savedCatnipClick = (state.upgrades || []).find(u => u.id === 'catnipclick');
+  if (savedCatnipClick && savedCatnipClick.purchased) {
+    const catnipClickUpg = game.upgrades.find(u => u.id === 'catnipclick');
+    if (catnipClickUpg && catnipClickUpg.type === 'stackable' && catnipClickUpg.level === 0) {
+      catnipClickUpg.level = 1;
     }
   }
 
