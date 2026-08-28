@@ -296,7 +296,7 @@ function renderCats() {
     } else {
       const costIcon = cat.currency === 'catnip' ? '🌿' : '🐟';
       html += `<div class="card-cost">${costIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary btn-sm card-btn" 
+      html += `<button class="btn btn-primary card-btn" 
                 onclick="buyCat(${i})" 
                 ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;
     }
@@ -357,14 +357,14 @@ function renderUpgrades() {
         html += `<div class="card-cost" style="color: var(--cat-orange);">Level ${upg.level}</div>`;
       }
       html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary btn-sm card-btn" 
+      html += `<button class="btn btn-primary card-btn" 
                 onclick="buyUpgrade(${i})" 
                 ${!canAfford ? 'disabled' : ''}>Level ${upg.level + 1}</button>`;
     } else if (isPurchased) {
       html += `<div class="card-cost" style="color: var(--success)">✅ ${i18n.t('upgrades.purchased')}</div>`;
     } else {
       html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary btn-sm card-btn" 
+      html += `<button class="btn btn-primary card-btn" 
                 onclick="buyUpgrade(${i})" 
                 ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;
     }
