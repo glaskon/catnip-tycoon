@@ -262,13 +262,30 @@ function checkAchievements() {
 }
 
 // Render the achievements list
+// Dirty-check: rebuild only when visible state changes (raw progress floats
+// change every tick — signature uses quantized display values instead).
+let _achRenderSig = null;
 function renderAchievements() {
   const container = document.getElementById('achievementList');
   if (!container) return;
 
-  let html = '';
   const total = ACHIEVEMENTS.length;
-  const earned = ACHIEVEMENTS.filter(a => a.earned).length;
+  let earned = 0;
+  let sig = i18n.currentLang;
+  for (const ach of ACHIEVEMENTS) {
+    if (ach.earned) {
+      earned++;
+      sig += '|1';
+    } else {
+      const p = ach.progress();
+      sig += '|0:' + formatNumber(p.current) + ':' + Math.floor(Math.min(100, (p.current / p.target) * 100));
+    }
+  }
+  sig += '|E' + earned;
+  if (sig === _achRenderSig) return;
+  _achRenderSig = sig;
+
+  let html = '';
 
   // Summary
   html += `<p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">`;
