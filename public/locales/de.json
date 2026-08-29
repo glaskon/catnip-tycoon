@@ -237,5 +237,14 @@
   "achievements.phoenixFriend": "Phönix-Freund",
   "achievements.phoenixFriendDesc": "Kaufe eine Phönix-Katze",
   "achievements.dailyHundred": "Hundert am Tag",
-  "achievements.dailyHundredDesc": "Klicke 100-mal an einem Tag"
+  "achievements.dailyHundredDesc": "Klicke 100-mal an einem Tag",
+  "catlife.locked": "Cat Life wird bei Prestige {n} freigeschaltet",
+  "catlife.hunger": "Hunger",
+  "catlife.feed": "Füttern",
+  "catlife.fedToast": "🍖 Nom nom! +{n} Sättigung",
+  "catlife.bonus": "Glückliches Haustier: +10% Fische/s",
+  "catlife.fedCount": "Gefütterte Mahlzeiten",
+  "catlife.mood_happy": "Glücklich 😻",
+  "catlife.mood_neutral": "Zufrieden 😺",
+  "catlife.mood_sad": "Hungrig 😿"
 }

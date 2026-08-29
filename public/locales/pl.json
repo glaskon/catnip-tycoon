@@ -237,5 +237,14 @@
   "achievements.phoenixFriend": "Przyjaciel Feniksa",
   "achievements.phoenixFriendDesc": "Kup Kota Feniksa",
   "achievements.dailyHundred": "Sto w Dniu",
-  "achievements.dailyHundredDesc": "Kliknij 100 razy w jeden dzień"
+  "achievements.dailyHundredDesc": "Kliknij 100 razy w jeden dzień",
+  "catlife.locked": "Cat Life odblokowane przy prestiżu {n}",
+  "catlife.hunger": "Głód",
+  "catlife.feed": "Karm",
+  "catlife.fedToast": "🍖 Nom nom! +{n} sytości",
+  "catlife.bonus": "Szczęśliwy pupil: +10% rybek/s",
+  "catlife.fedCount": "Podane posiłki",
+  "catlife.mood_happy": "Szczęśliwy 😻",
+  "catlife.mood_neutral": "Spokojny 😺",
+  "catlife.mood_sad": "Głodny 😿"
 }

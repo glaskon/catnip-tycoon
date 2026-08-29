@@ -237,5 +237,14 @@
   "achievements.phoenixFriend": "Friend of the Phoenix",
   "achievements.phoenixFriendDesc": "Buy a Phoenix Cat",
   "achievements.dailyHundred": "Hundred a Day",
-  "achievements.dailyHundredDesc": "Click 100 times in one day"
+  "achievements.dailyHundredDesc": "Click 100 times in one day",
+  "catlife.locked": "Cat Life unlocks at prestige {n}",
+  "catlife.hunger": "Hunger",
+  "catlife.feed": "Feed",
+  "catlife.fedToast": "🍖 Nom nom! +{n} hunger",
+  "catlife.bonus": "Happy pet: +10% fish/s",
+  "catlife.fedCount": "Meals served",
+  "catlife.mood_happy": "Happy 😻",
+  "catlife.mood_neutral": "Content 😺",
+  "catlife.mood_sad": "Hungry 😿"
 }

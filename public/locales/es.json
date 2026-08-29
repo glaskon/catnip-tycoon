@@ -237,5 +237,14 @@
   "achievements.phoenixFriend": "Amigo del Fénix",
   "achievements.phoenixFriendDesc": "Compra un Kot Feniks",
   "achievements.dailyHundred": "Cien al Día",
-  "achievements.dailyHundredDesc": "Haz clic 100 veces en un día"
+  "achievements.dailyHundredDesc": "Haz clic 100 veces en un día",
+  "catlife.locked": "Cat Life se desbloquea en el prestigio {n}",
+  "catlife.hunger": "Hambre",
+  "catlife.feed": "Dar de comer",
+  "catlife.fedToast": "🍖 Nom nom! +{n} de saciedad",
+  "catlife.bonus": "Mascota feliz: +10% peces/s",
+  "catlife.fedCount": "Comidas servidas",
+  "catlife.mood_happy": "Feliz 😻",
+  "catlife.mood_neutral": "Contento 😺",
+  "catlife.mood_sad": "Hambriento 😿"
 }

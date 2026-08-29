@@ -26,6 +26,9 @@ const game = {
   // --- Offline time ---
   offlineTimeMinutes: 60, // Default 1 hour — can be extended via shop
 
+  // --- Cat Life (virtual pet, unlocked at prestige 3) ---
+  catlife: null, // {hunger, lastUpdate, fedCount} — lazy-init in getCatLife()
+
   // --- Collections ---
   cats: [],
   // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
@@ -209,6 +212,11 @@ function recalcFPS() {
   // Quantum Karma active: ×10
   if (game._quantumActive) {
     base *= 10;
+  }
+
+  // Cat Life: happy pet (hunger >= 70) = +10% production
+  if (typeof catLifeProductionMultiplier === 'function') {
+    base *= catLifeProductionMultiplier();
   }
 
   game.fishPerSecond = base;
@@ -618,6 +626,7 @@ function buildSaveState() {
     lastClickDate: game.lastClickDate || '',
     totalCatsBought: game.totalCatsBought,
     offlineTimeMinutes: game.offlineTimeMinutes,
+    catlife: game.catlife || null,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
       id: u.id,
@@ -650,6 +659,13 @@ function applyGameState(state) {
   game.lastClickDate = state.lastClickDate || '';
   game.totalCatsBought = state.totalCatsBought || 0;
   game.offlineTimeMinutes = Math.min(state.offlineTimeMinutes || 60, OFFLINE_MAX_MIN);
+  if (state.catlife && typeof state.catlife === 'object') {
+    game.catlife = {
+      hunger: Math.max(0, Math.min(100, state.catlife.hunger ?? 100)),
+      lastUpdate: state.catlife.lastUpdate || Date.now(),
+      fedCount: state.catlife.fedCount || 0,
+    };
+  }
 
   // Restore cats
   if (state.cats) {

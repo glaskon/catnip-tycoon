@@ -524,6 +524,9 @@ function render() {
     case 'panel-shop':
       if (typeof renderShop === 'function') renderShop();
       break;
+    case 'panel-catlife':
+      if (typeof renderCatLife === 'function') renderCatLife();
+      break;
     case 'panel-achievements':
       if (typeof renderAchievements === 'function') renderAchievements();
       break;
