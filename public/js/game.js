@@ -876,7 +876,9 @@ function buyOfflineTime(currency) {
     if (gainedFish > 0) addFish(gainedFish);
     if (gainedCatnip > 0) game.catnip += gainedCatnip;
     if (gainedFish > 0 || gainedCatnip > 0) {
-      showToast(`⏱️ +${Math.floor(gainedSecs / 60)} min offline — 🐟 +${formatNumber(Math.floor(gainedFish))}`);
+      showToast(i18n.t('offline.topup', '⏱️ +{m} min offline — 🐟 +{fish}')
+        .replace('{m}', String(Math.floor(gainedSecs / 60)))
+        .replace('{fish}', formatNumber(Math.floor(gainedFish))));
     }
   }
 
@@ -900,18 +902,18 @@ function showOfflineEarnings(timeAway, awaySeconds, fps, catnipRate) {
   popup.id = 'offlinePopup';
   popup.innerHTML = `
     <div style="background: var(--bg-secondary); border: 2px solid var(--cat-orange); border-radius: var(--border-radius); padding: 20px; text-align: center; max-width: 360px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
-      <h3 style="color: var(--cat-orange); margin-bottom: 8px;">🐱 Welcome Back!</h3>
-      <p style="font-size: 0.85rem; color: var(--text-secondary);">You were away for <b>${timeAway}</b></p>
+      <h3 style="color: var(--cat-orange); margin-bottom: 8px;">🐱 ${i18n.t('offline.title', 'Welcome Back!')}</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary);">${i18n.t('offline.away', 'You were away for {time}').replace('{time}', `<b>${timeAway}</b>`)}</p>
       <div style="margin: 12px 0;">
-        <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);" id="offlineFishTotal">0</b> fish earned</p>
-        <p style="font-size: 1rem;" id="offlineCatnipLine">🌿 <b style="color: var(--cat-orange);" id="offlineCatnipTotal">0</b> catnip earned</p>
+        <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);" id="offlineFishTotal">0</b> ${i18n.t('offline.fishEarned', 'fish earned')}</p>
+        <p style="font-size: 1rem;" id="offlineCatnipLine">🌿 <b style="color: var(--cat-orange);" id="offlineCatnipTotal">0</b> ${i18n.t('offline.catnipEarned', 'catnip earned')}</p>
       </div>
       <p style="font-size: 0.75rem; color: var(--text-muted);" id="offlineWindowInfo"></p>
       <div id="offlineBuyRow" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
         <button class="btn btn-sm" id="offlineBuyCatnip" onclick="buyOfflineTime('catnip')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_CATNIP}🌿)</button>
         <button class="btn btn-sm" id="offlineBuyDiamond" onclick="buyOfflineTime('diamond')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_DIAMOND}💎)</button>
       </div>
-      <button class="btn btn-primary" onclick="document.getElementById('offlinePopup').remove()" style="margin-top: 8px;">Collect</button>
+      <button class="btn btn-primary" onclick="document.getElementById('offlinePopup').remove()" style="margin-top: 8px;">${i18n.t('offline.collect', 'Collect')}</button>
     </div>
   `;
 

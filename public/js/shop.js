@@ -185,13 +185,13 @@ function renderShop() {
 
     html += `<div class="shop-item">`;
     html += `<span class="shop-item-icon">${item.icon}</span>`;
-    html += `<div class="shop-item-name">${item.name}</div>`;
-    html += `<div style="font-size: 0.7rem; color: var(--text-secondary); margin: 4px 0;">${item.desc}</div>`;
+    html += `<div class="shop-item-name">${i18n.t('shop.item.' + item.id, item.name)}</div>`;
+    html += `<div style="font-size: 0.7rem; color: var(--text-secondary); margin: 4px 0;">${i18n.t('shop.itemDesc.' + item.id, item.desc)}</div>`;
 
     if (isItemStackable(item)) {
       const count = getShopItemCount(item.id);
       if (count > 0) {
-        html += `<div style="font-size: 0.7rem; color: var(--cat-orange);">Purchased ${count}x</div>`;
+        html += `<div style="font-size: 0.7rem; color: var(--cat-orange);">${i18n.t('shop.purchasedCount', 'Purchased {count}x').replace('{count}', String(count))}</div>`;
       }
       html += `<div class="shop-item-price">${currencyIcon} ${formatNumber(cost)}</div>`;
       html += `<button class="btn btn-primary btn-sm" 
@@ -259,7 +259,7 @@ function buyShopItem(itemId) {
   applyShopItem(itemId);
 
   // Show toast
-  showToast(`🛒 ${item.name} purchased!`);
+  showToast(i18n.t('shop.purchasedToast', '🛒 {name} purchased!').replace('{name}', i18n.t('shop.item.' + item.id, item.name)));
   render();
 }
 
@@ -285,7 +285,7 @@ function applyShopItem(itemId) {
     case 'offline_catnip':
     case 'offline_diamond':
       game.offlineTimeMinutes += 30;
-      showToast(`⏰ Offline time extended to ${game.offlineTimeMinutes} min`);
+      showToast(i18n.t('shop.timeExtended', '⏰ Offline time extended to {m} min').replace('{m}', String(game.offlineTimeMinutes)));
       break;
     case 'effect_sparkle':
     case 'effect_rainbow':

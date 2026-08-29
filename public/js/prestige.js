@@ -217,43 +217,45 @@ function renderPrestigePanel() {
 
   if (!canPrestige && game.totalFishEarned > 0) {
     html += `<p id="prestigeNeedMore" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">`;
-    html += `Need ${formatNumber(needed - game.totalFishEarned)} more fish`;
+    html += i18n.t('prestige.needMore', 'Need {n} more fish').replace('{n}', formatNumber(needed - game.totalFishEarned));
     html += `</p>`;
   }
 
   // Current prestige info
   html += `<div style="margin-top: 16px;">`;
-  html += `<p style="font-size: 0.9rem;"><b>Prestige Count:</b> ${game.prestigeCount}</p>`;
-  html += `<p style="font-size: 0.9rem;"><b>Catnip:</b> 🌿 <span id="prestigeCatnipVal">${formatNumber(Math.floor(game.catnip))}</span></p>`;
-  html += `<p style="font-size: 0.9rem;"><b>Elixirs:</b> 🧪 ${formatNumber(Math.floor(game.elixirs))}</p>`;
-  
+  html += `<p style="font-size: 0.9rem;"><b>${i18n.t('prestige.count', 'Prestige Count')}:</b> ${game.prestigeCount}</p>`;
+  html += `<p style="font-size: 0.9rem;"><b>${i18n.t('prestige.catnipLabel', 'Catnip')}:</b> 🌿 <span id="prestigeCatnipVal">${formatNumber(Math.floor(game.catnip))}</span></p>`;
+  html += `<p style="font-size: 0.9rem;"><b>${i18n.t('prestige.elixirsLabel', 'Elixirs')}:</b> 🧪 ${formatNumber(Math.floor(game.elixirs))}</p>`;
+
   // Show active bonuses
   if (game.prestigeCount >= 3) {
-    html += `<p style="font-size: 0.8rem; color: var(--success);">⚡ Cat Shrine active! +0.01 catnip/s</p>`;
+    html += `<p style="font-size: 0.8rem; color: var(--success);">${i18n.t('prestige.shrineActive', '⚡ Cat Shrine active! +{rate} catnip/s').replace('{rate}', String(getCatnipShrineRate()))}</p>`;
   }
   if (game.prestigeCount >= 5) {
-    html += `<p style="font-size: 0.8rem; color: var(--gold);">🌟 Divine Artifacts active! 2x global production</p>`;
+    html += `<p style="font-size: 0.8rem; color: var(--gold);">${i18n.t('prestige.artifactsActive', '🌟 Divine Artifacts active! 2x global production')}</p>`;
   }
   if (game.prestigeCount >= 10) {
     const pctBonus = Math.floor(game.prestigeCount / 10) * 5;
-    html += `<p style="font-size: 0.8rem; color: var(--cat-orange);">📈 +${pctBonus}% fish/s from Ascension Tiers</p>`;
+    html += `<p style="font-size: 0.8rem; color: var(--cat-orange);">${i18n.t('prestige.ascensionBonus', '📈 +{pct}% fish/s from Ascension Tiers').replace('{pct}', String(pctBonus))}</p>`;
   }
   html += `</div>`;
 
   // --- Elixir panel (Tier 4+) ---
   if (game.prestigeCount >= 10) {
     html += `<div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border: 1px solid #a855f7; border-radius: var(--border-radius);">`;
-    html += `<h3 style="color: #a855f7; margin-bottom: 8px;">🧪 Alchemy — Elixirs</h3>`;
-    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">You have <b style="color: #a855f7;"><span id="prestigeElixirVal">${formatNumber(elixirFloor)}</span></b> elixirs (${formatNumber(ELIXIR_RATE_PER_PRESTIGE * (game.prestigeCount - 9))}/min)</p>`;
+    html += `<h3 style="color: #a855f7; margin-bottom: 8px;">${i18n.t('prestige.alchemy', '🧪 Alchemy — Elixirs')}</h3>`;
+    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">${i18n.t('prestige.elixirsHave', 'You have {n} elixirs ({rate}/min)')
+      .replace('{n}', `<b style="color: #a855f7;"><span id="prestigeElixirVal">${formatNumber(elixirFloor)}</span></b>`)
+      .replace('{rate}', formatNumber(ELIXIR_RATE_PER_PRESTIGE * (game.prestigeCount - 9)))}</p>`;
     html += `<div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">`;
     
     const hasSpeed = game.elixirs >= 5;
     const hasClick = game.elixirs >= 3;
     const hasProd = game.elixirs >= 10;
     
-    html += `<button class="btn btn-sm" onclick="useElixirBoost('speed')" ${!hasSpeed ? 'disabled' : ''} style="background: #a855f7; color: #fff;">⚡ 10× Speed 30s (5🧪)</button>`;
-    html += `<button class="btn btn-sm" onclick="useElixirBoost('click')" ${!hasClick ? 'disabled' : ''} style="background: #a855f7; color: #fff;">👆 5× Click 2min (3🧪)</button>`;
-    html += `<button class="btn btn-sm" onclick="useElixirBoost('production')" ${!hasProd ? 'disabled' : ''} style="background: #a855f7; color: #fff;">🧪 10× Prod 30s (10🧪)</button>`;
+    html += `<button class="btn btn-sm" onclick="useElixirBoost('speed')" ${!hasSpeed ? 'disabled' : ''} style="background: #a855f7; color: #fff;">${i18n.t('prestige.boostSpeed', '⚡ 10× Speed 30s (5🧪)')}</button>`;
+    html += `<button class="btn btn-sm" onclick="useElixirBoost('click')" ${!hasClick ? 'disabled' : ''} style="background: #a855f7; color: #fff;">${i18n.t('prestige.boostClick', '👆 5× Click 2min (3🧪)')}</button>`;
+    html += `<button class="btn btn-sm" onclick="useElixirBoost('production')" ${!hasProd ? 'disabled' : ''} style="background: #a855f7; color: #fff;">${i18n.t('prestige.boostProd', '🧪 10× Prod 30s (10🧪)')}</button>`;
     
     html += `</div></div>`;
   }
@@ -261,8 +263,8 @@ function renderPrestigePanel() {
   // --- Cat Anchor (Tier 6+) ---
   if (game.prestigeCount >= 35) {
     html += `<div style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--cat-orange); border-radius: var(--border-radius);">`;
-    html += `<h3 style="color: var(--cat-orange); margin-bottom: 8px;">⚓ Cat Anchor</h3>`;
-    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">Choose one cat to keep through prestige:</p>`;
+    html += `<h3 style="color: var(--cat-orange); margin-bottom: 8px;">${i18n.t('prestige.catAnchor', '⚓ Cat Anchor')}</h3>`;
+    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">${i18n.t('prestige.chooseCat', 'Choose one cat to keep through prestige:')}</p>`;
     html += `<div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">`;
     for (const cat of game.cats) {
       if (cat.count > 0) {
@@ -272,7 +274,7 @@ function renderPrestigePanel() {
       }
     }
     if (game.anchoredCatId) {
-      html += `<p style="font-size: 0.75rem; color: var(--success); margin-top: 4px;">✅ Anchored: ${i18n.t(game.cats.find(c => c.id === game.anchoredCatId)?.nameKey || '', '')}</p>`;
+      html += `<p style="font-size: 0.75rem; color: var(--success); margin-top: 4px;">${i18n.t('prestige.anchored', '✅ Anchored: {name}').replace('{name}', i18n.t(game.cats.find(c => c.id === game.anchoredCatId)?.nameKey || '', ''))}</p>`;
     }
     html += `</div></div>`;
   }
@@ -280,8 +282,8 @@ function renderPrestigePanel() {
   // --- Preserved Upgrade (Tier 8+) ---
   if (game.prestigeCount >= 75) {
     html += `<div style="margin-top: 16px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--gold); border-radius: var(--border-radius);">`;
-    html += `<h3 style="color: var(--gold); margin-bottom: 8px;">👑 Wybraniec</h3>`;
-    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">Choose one upgrade to keep through prestige:</p>`;
+    html += `<h3 style="color: var(--gold); margin-bottom: 8px;">${i18n.t('prestige.preservedTitle', '👑 Chosen One')}</h3>`;
+    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">${i18n.t('prestige.chooseUpgrade', 'Choose one upgrade to keep through prestige:')}</p>`;
     html += `<div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">`;
     for (const upg of game.upgrades) {
       if (upg.purchased || (game.preservedUpgradeId === upg.id)) {
@@ -292,14 +294,14 @@ function renderPrestigePanel() {
     }
     if (game.preservedUpgradeId) {
       const name = game.upgrades.find(u => u.id === game.preservedUpgradeId);
-      html += `<p style="font-size: 0.75rem; color: var(--gold); margin-top: 4px;">👑 Preserved: ${i18n.t(name?.nameKey || '', '')}</p>`;
+      html += `<p style="font-size: 0.75rem; color: var(--gold); margin-top: 4px;">${i18n.t('prestige.preserved', '👑 Preserved: {name}').replace('{name}', i18n.t(name?.nameKey || '', ''))}</p>`;
     }
     html += `</div></div>`;
   }
 
   // --- Prestige Tiers progress ---
   html += `<div style="margin-top: 20px;">`;
-  html += `<h3 style="color: var(--cat-orange); margin-bottom: 10px;">${i18n.t('prestige.tier')} Progress</h3>`;
+  html += `<h3 style="color: var(--cat-orange); margin-bottom: 10px;">${i18n.t('prestige.tierProgress', 'Tier Progress')}</h3>`;
 
   for (const tier of PRESTIGE_TIERS) {
     const earned = game.prestigeCount >= tier.required;

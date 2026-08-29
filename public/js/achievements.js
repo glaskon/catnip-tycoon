@@ -289,7 +289,8 @@ function renderAchievements() {
 
   // Summary
   html += `<p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">`;
-  html += `🏆 ${earned} / ${total} achievements earned`;
+  html += `🏆 ${i18n.t('achievements.summary', '{earned} / {total} achievements earned')
+    .replace('{earned}', String(earned)).replace('{total}', String(total))}`;
   html += `</p>`;
 
   for (const ach of ACHIEVEMENTS) {
@@ -306,7 +307,7 @@ function renderAchievements() {
     if (!ach.earned) {
       html += `<div class="achievement-progress">${formatNumber(progress.current)} / ${formatNumber(progress.target)} (${percentage.toFixed(1)}%)</div>`;
     } else {
-      html += `<div class="achievement-progress" style="color: var(--success);">✅ Earned!</div>`;
+      html += `<div class="achievement-progress" style="color: var(--success);">${i18n.t('achievements.earnedBadge', '✅ Earned!')}</div>`;
     }
     html += `</div>`;
     html += `</div>`;
