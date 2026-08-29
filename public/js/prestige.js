@@ -176,6 +176,7 @@ function renderPrestigePanel() {
     (elixirFloor >= 3 ? 1 : 0) + (elixirFloor >= 5 ? 1 : 0) + (elixirFloor >= 10 ? 1 : 0),
     game.cats.map(c => c.count > 0 ? 1 : 0).join(''),
     game.upgrades.map(u => (u.purchased || u.id === game.preservedUpgradeId) ? 1 : 0).join(''),
+    _prestigeArmed ? 1 : 0, // confirm state must force button rebuild
   ].join('|');
   if (sig === _prestigeRenderSig) return;
   _prestigeRenderSig = sig;
@@ -211,9 +212,13 @@ function renderPrestigePanel() {
   html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.keptNote', '✅ Kept: catnip, diamonds, prestige tiers')}</p>`;
   html += `</div>`;
 
-  // Prestige button
-  html += `<button class="btn btn-warning" onclick="performPrestige()" ${!canPrestige ? 'disabled' : ''}>`;
-  html += `✨ ${i18n.t('prestige.perform')}</button>`;
+  // Prestige button — 2-click confirmation (destructive action)
+  if (_prestigeArmed) {
+    html += `<button class="btn btn-danger" onclick="armPrestige()">⚠️ ${i18n.t('prestige.confirm', 'Are you sure? Click again')}</button>`;
+  } else {
+    html += `<button class="btn btn-warning" onclick="armPrestige()" ${!canPrestige ? 'disabled' : ''}>`;
+    html += `✨ ${i18n.t('prestige.perform')}</button>`;
+  }
 
   if (!canPrestige && game.totalFishEarned > 0) {
     html += `<p id="prestigeNeedMore" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">`;
@@ -326,6 +331,32 @@ function renderPrestigePanel() {
   container.innerHTML = html;
 }
 
+// Two-click confirmation for prestige (destructive reset).
+// 1st click arms the button ("Are you sure? Click again"), 2nd click within
+// 5s executes. Auto-disarms after 5s. (Incident 2026-08-28: 3 accidental
+// prestiges during testing.)
+let _prestigeArmed = false;
+let _prestigeArmTimer = null;
+
+function armPrestige() {
+  if (_prestigeArmed) {
+    _prestigeArmed = false;
+    if (_prestigeArmTimer) clearTimeout(_prestigeArmTimer);
+    _prestigeArmTimer = null;
+    performPrestige();
+    return;
+  }
+  const needed = getCatnipNeeded();
+  if (game.totalFishEarned < needed) return;
+  _prestigeArmed = true;
+  renderPrestigePanel();
+  _prestigeArmTimer = setTimeout(() => {
+    _prestigeArmed = false;
+    _prestigeArmTimer = null;
+    renderPrestigePanel();
+  }, 5000);
+}
+
 // Wrapper function to call prestige and show feedback
 function performPrestige() {
   if (prestige()) {
@@ -347,6 +378,7 @@ function showPrestigeRewards() {
 // Expose to global scope
 window.renderPrestigePanel = renderPrestigePanel;
 window.performPrestige = performPrestige;
+window.armPrestige = armPrestige;
 window.showPrestigeRewards = showPrestigeRewards;
 window.PRESTIGE_TIERS = PRESTIGE_TIERS;
 window.useElixirBoost = useElixirBoost;
