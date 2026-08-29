@@ -244,6 +244,16 @@ const ACHIEVEMENTS = [
     reward: { diamonds: 10 },
     earned: false,
   },
+  {
+    id: 'goddess_cat',
+    nameKey: 'achievements.goddessCat',
+    descKey: 'achievements.goddessCatDesc',
+    icon: '🌌',
+    condition: () => game.prestigeCount >= 100,
+    progress: () => ({ current: game.prestigeCount, target: 100 }),
+    reward: { diamonds: 1000 },
+    earned: false,
+  },
 ];
 
 // Load earned achievements from localStorage

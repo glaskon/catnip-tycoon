@@ -326,6 +326,16 @@ function renderPrestigePanel() {
     html += `</ul>`;
     html += `</div>`;
   }
+
+  // --- Endgame: final tier reached (100+ prestiges) ---
+  if (game.prestigeCount >= 100) {
+    html += `<div style="margin-top: 16px; padding: 14px; background: linear-gradient(135deg, rgba(241,196,15,0.08), rgba(168,85,247,0.08)); border: 1px solid var(--gold); border-radius: var(--border-radius); text-align: center;">`;
+    html += `<p style="font-size: 2rem;">🌌</p>`;
+    html += `<p style="font-size: 0.9rem; font-weight: bold; color: var(--gold);">${i18n.t('prestige.endgameTitle', 'Final Tier Reached')}</p>`;
+    html += `<p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px;">${i18n.t('prestige.endgameBanner', 'The Goddess Cat reigns. The game goes on — production keeps scaling (+5% per 10 prestiges).')}</p>`;
+    html += `</div>`;
+  }
+
   html += `</div>`;
 
   container.innerHTML = html;

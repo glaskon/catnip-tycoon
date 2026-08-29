@@ -246,5 +246,9 @@
   "catlife.fedCount": "Meals served",
   "catlife.mood_happy": "Happy 😻",
   "catlife.mood_neutral": "Content 😺",
-  "catlife.mood_sad": "Hungry 😿"
+  "catlife.mood_sad": "Hungry 😿",
+  "achievements.goddessCat": "Goddess Cat",
+  "achievements.goddessCatDesc": "Reach 100 prestiges",
+  "prestige.endgameTitle": "Final Tier Reached",
+  "prestige.endgameBanner": "The Goddess Cat reigns. The game goes on — production keeps scaling (+5% per 10 prestiges)."
 }

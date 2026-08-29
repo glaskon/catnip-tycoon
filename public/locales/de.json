@@ -246,5 +246,9 @@
   "catlife.fedCount": "Gefütterte Mahlzeiten",
   "catlife.mood_happy": "Glücklich 😻",
   "catlife.mood_neutral": "Zufrieden 😺",
-  "catlife.mood_sad": "Hungrig 😿"
+  "catlife.mood_sad": "Hungrig 😿",
+  "achievements.goddessCat": "Göttinnenkatze",
+  "achievements.goddessCatDesc": "Erreiche 100 Prestiges",
+  "prestige.endgameTitle": "Endstufe Erreicht",
+  "prestige.endgameBanner": "Die Göttinnenkatze regiert. Das Spiel geht weiter — die Produktion skaliert weiter (+5% pro 10 Prestiges)."
 }

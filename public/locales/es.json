@@ -246,5 +246,9 @@
   "catlife.fedCount": "Comidas servidas",
   "catlife.mood_happy": "Feliz 😻",
   "catlife.mood_neutral": "Contento 😺",
-  "catlife.mood_sad": "Hambriento 😿"
+  "catlife.mood_sad": "Hambriento 😿",
+  "achievements.goddessCat": "Gata Diosa",
+  "achievements.goddessCatDesc": "Alcanza 100 prestigios",
+  "prestige.endgameTitle": "Nivel Final Alcanzado",
+  "prestige.endgameBanner": "La Gata Diosa reina. El juego continúa — la producción sigue creciendo (+5% cada 10 prestigios)."
 }

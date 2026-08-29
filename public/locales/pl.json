@@ -246,5 +246,9 @@
   "catlife.fedCount": "Podane posiłki",
   "catlife.mood_happy": "Szczęśliwy 😻",
   "catlife.mood_neutral": "Spokojny 😺",
-  "catlife.mood_sad": "Głodny 😿"
+  "catlife.mood_sad": "Głodny 😿",
+  "achievements.goddessCat": "Kot Bogini",
+  "achievements.goddessCatDesc": "Osiągnij 100 prestiży",
+  "prestige.endgameTitle": "Osiągnięty Ostateczny Poziom",
+  "prestige.endgameBanner": "Kot Bogini króluje. Gra trwa dalej — produkcja rośnie dalej (+5% co 10 prestiży)."
 }
