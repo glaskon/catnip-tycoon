@@ -520,6 +520,21 @@ function prestige() {
 // Game loop and persistence
 // ============================================================
 
+// Cat Shrine catnip/s rate — single source of truth for live gameLoop AND
+// offline earnings (loadGame). Scales with prestige (10+) + SuperKarmnik ×4.
+function getCatnipShrineRate() {
+  if (game.prestigeCount < 3) return 0;
+  let catnipRate = 0.01;
+  if (game.prestigeCount >= 10) {
+    catnipRate += (game.prestigeCount - 9) * 0.005; // scales: +0.005/s per prestige past 10
+  }
+  // SuperKarmnik: 4x catnip generation
+  if (hasUpgrade('superkarmnik')) {
+    catnipRate *= 4;
+  }
+  return catnipRate;
+}
+
 // Main game loop: runs every 100ms
 function gameLoop() {
   const now = Date.now();
@@ -540,15 +555,7 @@ function gameLoop() {
 
   // Tier 2 prestige: Cat Shrine generates catnip/s (scales with prestige)
   if (game.prestigeCount >= 3) {
-    let catnipRate = 0.01;
-    if (game.prestigeCount >= 10) {
-      catnipRate += (game.prestigeCount - 9) * 0.005; // scales: +0.005/s per prestige past 10
-    }
-    // SuperKarmnik: 4x catnip generation
-    if (hasUpgrade('superkarmnik')) {
-      catnipRate *= 4;
-    }
-    game.catnip += catnipRate * delta * game.speedMultiplier;
+    game.catnip += getCatnipShrineRate() * delta * game.speedMultiplier;
   }
 
   // Tier 4+: tick elixirs
@@ -752,7 +759,9 @@ async function loadGame() {
 
       if (offlineSeconds > 30) { // Only show if more than 30s offline
         const fps = state.fishPerSecond || 0;
-        const catnipRate = state.prestigeCount >= 3 ? 0.01 : 0;
+        // Same formula as live generation (applyGameState already restored
+        // prestigeCount + upgrades): prestige 10+ scaling + SuperKarmnik ×4
+        const catnipRate = getCatnipShrineRate();
         const offlineFish = fps * offlineSeconds;
         const offlineCatnip = catnipRate * offlineSeconds;
 
