@@ -6,63 +6,63 @@ const PRESTIGE_TIERS = [
     tier: 1,
     required: 1,
     nameKey: 'prestige.tier1',
-    rewards: ['🐱 Kot Mag (Wizard Cat) unlocked', '⬆️ New upgrades available'],
+    rewardKeys: ['prestige.tier1r1', 'prestige.tier1r2'],
     unlocked: false,
   },
   {
     tier: 2,
     required: 3,
     nameKey: 'prestige.tier2',
-    rewards: ['🌿 Cat Shrine: +0.01 catnip/s', '🐟 Bonus fish multiplier'],
+    rewardKeys: ['prestige.tier2r1', 'prestige.tier2r2'],
     unlocked: false,
   },
   {
     tier: 3,
     required: 5,
     nameKey: 'prestige.tier3',
-    rewards: ['🌟 Divine Artifacts: 2x global production', '💎 Premium cosmetic unlocks'],
+    rewardKeys: ['prestige.tier3r1', 'prestige.tier3r2'],
     unlocked: false,
   },
   {
     tier: 4,
     required: 10,
     nameKey: 'prestige.tier4',
-    rewards: ['🧪 Kocia Alchemia: craft Elixirs for timed boosts', '⚡ +5% fish/s (every 10 prestiges)'],
+    rewardKeys: ['prestige.tier4r1', 'prestige.tier4r2'],
     unlocked: false,
   },
   {
     tier: 5,
     required: 20,
     nameKey: 'prestige.tier5',
-    rewards: ['🐲 Kot Feniks unlocked — buyable for catnip, 1M fish/s base!'],
+    rewardKeys: ['prestige.tier5r1'],
     unlocked: false,
   },
   {
     tier: 6,
     required: 35,
     nameKey: 'prestige.tier6',
-    rewards: ['⚓ Cat Anchor: keep 1 cat through prestige'],
+    rewardKeys: ['prestige.tier6r1'],
     unlocked: false,
   },
   {
     tier: 7,
     required: 50,
     nameKey: 'prestige.tier7',
-    rewards: ['🐟 Kocia Łaska: 10% of spent fish returns as catnip after prestige'],
+    rewardKeys: ['prestige.tier7r1'],
     unlocked: false,
   },
   {
     tier: 8,
     required: 75,
     nameKey: 'prestige.tier8',
-    rewards: ['👑 Wybraniec: 1 upgrade survives prestige reset'],
+    rewardKeys: ['prestige.tier8r1'],
     unlocked: false,
   },
   {
     tier: 9,
     required: 100,
     nameKey: 'prestige.tier9',
-    rewards: ['✨ Kot Bogini — ×100 global production, golden cat aura!'],
+    rewardKeys: ['prestige.tier9r1'],
     unlocked: false,
   },
 ];
@@ -97,19 +97,19 @@ function useElixirBoost(type) {
       game.speedMultiplier *= 10;
       setTimeout(() => {
         game.speedMultiplier /= 10;
-        showToast('⚡ Speed boost expired');
+        showToast(i18n.t('toast.speedExpired'));
         render();
       }, 30000);
-      showToast('⚡ 10x Speed for 30s!');
+      showToast(i18n.t('toast.speedBoost'));
       break;
     case 'click':
       game.fishPerClick *= 5;
       setTimeout(() => {
         game.fishPerClick /= 5;
-        showToast('👆 Click boost expired');
+        showToast(i18n.t('toast.clickExpired'));
         render();
       }, 120000);
-      showToast('👆 5x Click for 2 minutes!');
+      showToast(i18n.t('toast.clickBoost'));
       break;
     case 'production':
       // 10x production for 30 seconds
@@ -118,12 +118,12 @@ function useElixirBoost(type) {
       game._prodBoost = true;
       setTimeout(() => {
         game._prodBoost = false;
-        showToast('🧪 Production boost expired');
+        showToast(i18n.t('toast.prodExpired'));
         recalcFPS();
         render();
       }, 30000);
       recalcFPS();
-      showToast('🧪 10x Cat Production for 30s!');
+      showToast(i18n.t('toast.prodBoost'));
       break;
   }
   render();
@@ -197,18 +197,18 @@ function renderPrestigePanel() {
 
   // Reward info
   html += `<div style="margin: 16px 0; padding: 12px; background: var(--bg-tertiary); border-radius: var(--border-radius);">`;
-  html += `<p style="font-size: 0.9rem;">${i18n.t('prestige.gain')}: <b style="color: var(--gold);">🌿 ${formatNumber(reward)} catnip</b></p>`;
-  
+  html += `<p style="font-size: 0.9rem;">${i18n.t('prestige.gain')}: <b style="color: var(--gold);">${i18n.t('prestige.rewardCatnip', '🌿 {n} catnip').replace('{n}', formatNumber(reward))}</b></p>`;
+
   // Tier 7: Catnip cashback
   if (game.prestigeCount >= 50) {
     const cashback = Math.floor(game.totalFishEarned * 0.1 / 100);
     if (cashback > 0) {
-      html += `<p id="prestigeCashbackLine" style="font-size: 0.8rem; color: var(--cat-orange);">🐟 Kocia Łaska: +🌿 ${formatNumber(cashback)} catnip cashback!</p>`;
+      html += `<p id="prestigeCashbackLine" style="font-size: 0.8rem; color: var(--cat-orange);">${i18n.t('prestige.cashback', '🐟 Cat Grace: +🌿 {n} cashback!').replace('{n}', formatNumber(cashback))}</p>`;
     }
   }
-  
-  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.progress')} resets: fish, cats, upgrades</p>`;
-  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">✅ Kept: catnip, diamonds, prestige tiers</p>`;
+
+  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.resetsNote', 'resets: fish, cats, upgrades')}</p>`;
+  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.keptNote', '✅ Kept: catnip, diamonds, prestige tiers')}</p>`;
   html += `</div>`;
 
   // Prestige button
@@ -313,10 +313,10 @@ function renderPrestigePanel() {
 
     html += `<div class="prestige-tier ${tierClass}">`;
     html += `<p style="font-weight: bold;">${i18n.t(tier.nameKey, `Tier ${tier.tier}`)}</p>`;
-    html += `<p style="font-size: 0.75rem; color: var(--text-secondary);">Requires: ${tier.required} prestige(s) — ${earned ? '✅ Unlocked' : `🔒 ${game.prestigeCount}/${tier.required}`}</p>`;
+    html += `<p style="font-size: 0.75rem; color: var(--text-secondary);">${i18n.t('prestige.tierRequires', 'Requires: {n} prestige(s)').replace('{n}', String(tier.required))} — ${earned ? i18n.t('prestige.tierUnlocked', '✅ Unlocked') : `🔒 ${game.prestigeCount}/${tier.required}`}</p>`;
     html += `<ul style="font-size: 0.75rem; color: var(--text-muted); padding-left: 16px; margin-top: 4px;">`;
-    for (const reward of tier.rewards) {
-      html += `<li>${reward}</li>`;
+    for (const rewardKey of tier.rewardKeys) {
+      html += `<li>${i18n.t(rewardKey, '')}</li>`;
     }
     html += `</ul>`;
     html += `</div>`;
@@ -329,7 +329,7 @@ function renderPrestigePanel() {
 // Wrapper function to call prestige and show feedback
 function performPrestige() {
   if (prestige()) {
-    showToast('✨ Prestige complete!');
+    showToast(i18n.t('prestige.completeToast', '✨ Prestige complete!'));
     renderPrestigePanel();
     saveGame();
   }
@@ -339,9 +339,9 @@ function performPrestige() {
 function showPrestigeRewards() {
   const nextTier = PRESTIGE_TIERS.find(t => t.required > game.prestigeCount);
   if (!nextTier) {
-    return 'All tiers unlocked! 🎉';
+    return i18n.t('prestige.allTiersUnlocked', 'All tiers unlocked! 🎉');
   }
-  return nextTier.rewards.join(', ');
+  return nextTier.rewardKeys.map(k => i18n.t(k, '')).join(', ');
 }
 
 // Expose to global scope
