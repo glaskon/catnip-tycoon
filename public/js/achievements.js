@@ -208,6 +208,42 @@ const ACHIEVEMENTS = [
     reward: { fish: 100000 },
     earned: false,
   },
+  {
+    id: 'lucky_drop',
+    nameKey: 'achievements.luckyDrop',
+    descKey: 'achievements.luckyDropDesc',
+    icon: '🍀',
+    condition: () => (game.luckyCatnipCount || 0) >= 1,
+    progress: () => ({ current: game.luckyCatnipCount || 0, target: 1 }),
+    reward: { diamonds: 5 },
+    earned: false,
+  },
+  {
+    id: 'phoenix_friend',
+    nameKey: 'achievements.phoenixFriend',
+    descKey: 'achievements.phoenixFriendDesc',
+    icon: '🐲',
+    condition: () => {
+      const phoenix = game.cats.find(c => c.id === 'kotfeniks');
+      return phoenix ? phoenix.count >= 1 : false;
+    },
+    progress: () => {
+      const phoenix = game.cats.find(c => c.id === 'kotfeniks');
+      return { current: phoenix ? phoenix.count : 0, target: 1 };
+    },
+    reward: { diamonds: 100 },
+    earned: false,
+  },
+  {
+    id: 'daily_hundred',
+    nameKey: 'achievements.dailyHundred',
+    descKey: 'achievements.dailyHundredDesc',
+    icon: '📅',
+    condition: () => (game.dailyClicks || 0) >= 100,
+    progress: () => ({ current: game.dailyClicks || 0, target: 100 }),
+    reward: { diamonds: 10 },
+    earned: false,
+  },
 ];
 
 // Load earned achievements from localStorage

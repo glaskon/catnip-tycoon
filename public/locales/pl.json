@@ -231,5 +231,11 @@
   "toast.clickExpired": "👆 Boost kliku wygasł",
   "toast.prodBoost": "🧪 10x produkcja kotów na 30s!",
   "toast.prodExpired": "🧪 Boost produkcji wygasł",
-  "prestige.allTiersUnlocked": "Wszystkie poziomy odblokowane! 🎉"
+  "prestige.allTiersUnlocked": "Wszystkie poziomy odblokowane! 🎉",
+  "achievements.luckyDrop": "Pierwszy Szczęśliwy Drop",
+  "achievements.luckyDropDesc": "Dostanij szczęśliwy drop kocimiętki (25🌿) za klik",
+  "achievements.phoenixFriend": "Przyjaciel Feniksa",
+  "achievements.phoenixFriendDesc": "Kup Kota Feniksa",
+  "achievements.dailyHundred": "Sto w Dniu",
+  "achievements.dailyHundredDesc": "Kliknij 100 razy w jeden dzień"
 }

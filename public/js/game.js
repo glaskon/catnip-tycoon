@@ -19,6 +19,9 @@ const game = {
   // --- Click tracking ---
   clickCount: 0,
   totalCatsBought: 0,
+  luckyCatnipCount: 0,  // lifetime lucky catnip drops (survives prestige)
+  dailyClicks: 0,       // clicks on the current day (daily achievements)
+  lastClickDate: '',    // day marker for dailyClicks reset
 
   // --- Offline time ---
   offlineTimeMinutes: 60, // Default 1 hour — can be extended via shop
@@ -263,6 +266,14 @@ function clickCat(event) {
   addFish(clickValue);
   game.clickCount++;
 
+  // Daily click tracking (resets on a new day)
+  const today = new Date().toDateString();
+  if (game.lastClickDate !== today) {
+    game.lastClickDate = today;
+    game.dailyClicks = 0;
+  }
+  game.dailyClicks++;
+
   // Lucky Catnip Click: base 1/100,000 per click, each level raises the
   // chance gently (×1.05, ×1.06, ×1.10... — same ramp as Diamond Luck)
   const catnipClickLevel = getUpgradeLevel('catnipclick');
@@ -274,6 +285,7 @@ function clickCat(event) {
     }
     if (Math.random() < catnipDropRate) {
       game.catnip += 25;
+      game.luckyCatnipCount = (game.luckyCatnipCount || 0) + 1;
       if (typeof showToast === 'function') {
         showToast('🍀 ' + i18n.t('toasts.luckyCatnip', 'Lucky Catnip! +25🌿'));
       }
@@ -601,6 +613,9 @@ function buildSaveState() {
     anchoredCatId: game.anchoredCatId,
     preservedUpgradeId: game.preservedUpgradeId,
     clickCount: game.clickCount,
+    luckyCatnipCount: game.luckyCatnipCount || 0,
+    dailyClicks: game.dailyClicks || 0,
+    lastClickDate: game.lastClickDate || '',
     totalCatsBought: game.totalCatsBought,
     offlineTimeMinutes: game.offlineTimeMinutes,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
@@ -630,6 +645,9 @@ function applyGameState(state) {
   game.anchoredCatId = state.anchoredCatId || null;
   game.preservedUpgradeId = state.preservedUpgradeId || null;
   game.clickCount = state.clickCount || 0;
+  game.luckyCatnipCount = state.luckyCatnipCount || 0;
+  game.dailyClicks = state.dailyClicks || 0;
+  game.lastClickDate = state.lastClickDate || '';
   game.totalCatsBought = state.totalCatsBought || 0;
   game.offlineTimeMinutes = Math.min(state.offlineTimeMinutes || 60, OFFLINE_MAX_MIN);
 

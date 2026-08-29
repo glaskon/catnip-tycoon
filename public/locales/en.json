@@ -231,5 +231,11 @@
   "toast.clickExpired": "👆 Click boost expired",
   "toast.prodBoost": "🧪 10x Cat Production for 30s!",
   "toast.prodExpired": "🧪 Production boost expired",
-  "prestige.allTiersUnlocked": "All tiers unlocked! 🎉"
+  "prestige.allTiersUnlocked": "All tiers unlocked! 🎉",
+  "achievements.luckyDrop": "First Lucky Drop",
+  "achievements.luckyDropDesc": "Get a lucky catnip drop (25🌿) from a click",
+  "achievements.phoenixFriend": "Friend of the Phoenix",
+  "achievements.phoenixFriendDesc": "Buy a Phoenix Cat",
+  "achievements.dailyHundred": "Hundred a Day",
+  "achievements.dailyHundredDesc": "Click 100 times in one day"
 }

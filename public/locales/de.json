@@ -231,5 +231,11 @@
   "toast.clickExpired": "👆 Klick-Boost abgelaufen",
   "toast.prodBoost": "🧪 10x Katzenproduktion 30s!",
   "toast.prodExpired": "🧪 Produktions-Boost abgelaufen",
-  "prestige.allTiersUnlocked": "Alle Stufen freigeschaltet! 🎉"
+  "prestige.allTiersUnlocked": "Alle Stufen freigeschaltet! 🎉",
+  "achievements.luckyDrop": "Erster Glücks-Drop",
+  "achievements.luckyDropDesc": "Erhalte einen Glück-Drop Katzenminze (25🌿) per Klick",
+  "achievements.phoenixFriend": "Phönix-Freund",
+  "achievements.phoenixFriendDesc": "Kaufe eine Phönix-Katze",
+  "achievements.dailyHundred": "Hundert am Tag",
+  "achievements.dailyHundredDesc": "Klicke 100-mal an einem Tag"
 }

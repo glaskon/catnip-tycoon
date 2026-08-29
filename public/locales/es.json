@@ -231,5 +231,11 @@
   "toast.clickExpired": "👆 Impulso de clic expirado",
   "toast.prodBoost": "🧪 ¡10x producción de gatos 30s!",
   "toast.prodExpired": "🧪 Impulso de producción expirado",
-  "prestige.allTiersUnlocked": "¡Todos los niveles desbloqueados! 🎉"
+  "prestige.allTiersUnlocked": "¡Todos los niveles desbloqueados! 🎉",
+  "achievements.luckyDrop": "Primer Drop con Suerte",
+  "achievements.luckyDropDesc": "Consigue un drop de albahaca (25🌿) con un clic",
+  "achievements.phoenixFriend": "Amigo del Fénix",
+  "achievements.phoenixFriendDesc": "Compra un Kot Feniks",
+  "achievements.dailyHundred": "Cien al Día",
+  "achievements.dailyHundredDesc": "Haz clic 100 veces en un día"
 }
