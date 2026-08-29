@@ -74,6 +74,13 @@ function initBackground() {
 // Cat Canvas - draw the clickable cat
 // ============================================================
 
+// Cat skins from the shop — fur/whisker/mouth palettes (last purchased wins)
+const CAT_SKINS = {
+  skin_orange:  { fur: '#f4a261', whisker: '#8b5e3c', mouth: '#6b4c3b', ear: '#f4a261' },
+  skin_black:   { fur: '#2d3436', whisker: '#9aa5a8', mouth: '#8a9498', ear: '#2d3436' },
+  skin_siamese: { fur: '#f5e6d3', whisker: '#a9825e', mouth: '#8b5e3c', ear: '#8b5e3c' },
+};
+
 function drawCat() {
   const canvas = document.getElementById('catCanvas');
   if (!canvas) return;
@@ -84,24 +91,33 @@ function drawCat() {
 
   ctx.clearRect(0, 0, w, h);
 
+  // Active cosmetics (last purchased wins)
+  let skin = CAT_SKINS.skin_orange;
+  if (typeof lastOwned === 'function') {
+    const skinId = lastOwned('skin_');
+    if (skinId && CAT_SKINS[skinId]) skin = CAT_SKINS[skinId];
+  }
+  const activeOutfit = (typeof lastOwned === 'function') ? lastOwned('outfit_') : null;
+
   // Draw a stylized cat face with emoji-like style using canvas primitives
   const cx = w / 2;
   const cy = h / 2 - 5;
   const headRadius = 55;
 
   // Body
-  ctx.fillStyle = '#f4a261';
+  ctx.fillStyle = skin.fur;
   ctx.beginPath();
   ctx.ellipse(cx, cy + headRadius - 10, 50, 45, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Head
-  ctx.fillStyle = '#f4a261';
+  ctx.fillStyle = skin.fur;
   ctx.beginPath();
   ctx.arc(cx, cy - 10, headRadius, 0, Math.PI * 2);
   ctx.fill();
 
   // Ears (left)
+  ctx.fillStyle = skin.ear;
   ctx.beginPath();
   ctx.moveTo(cx - 40, cy - 50);
   ctx.lineTo(cx - 55, cy - 85);
@@ -164,7 +180,7 @@ function drawCat() {
   ctx.fill();
 
   // Mouth
-  ctx.strokeStyle = '#6b4c3b';
+  ctx.strokeStyle = skin.mouth;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(cx, cy + 2);
@@ -176,7 +192,7 @@ function drawCat() {
   ctx.stroke();
 
   // Whiskers
-  ctx.strokeStyle = '#8b5e3c';
+  ctx.strokeStyle = skin.whisker;
   ctx.lineWidth = 1;
   // Left whiskers
   ctx.beginPath(); ctx.moveTo(cx - 15, cy); ctx.lineTo(cx - 45, cy - 8); ctx.stroke();
@@ -189,6 +205,37 @@ function drawCat() {
   ctx.font = '36px serif';
   ctx.textAlign = 'center';
   ctx.fillText('🐟', cx + 30, cy + 25);
+
+  // --- Outfits (drawn last, on top of head) ---
+  if (activeOutfit === 'outfit_hat') {
+    // Top hat: cylinder + brim + band, sitting between the ears
+    ctx.fillStyle = '#22222a';
+    ctx.fillRect(cx - 24, cy - 105, 48, 42);            // cylinder
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 63, 34, 8, 0, 0, Math.PI * 2);  // brim
+    ctx.fill();
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(cx - 24, cy - 74, 48, 7);               // band
+  } else if (activeOutfit === 'outfit_crown') {
+    // Royal crown: gold zigzag with a base band
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.moveTo(cx - 28, cy - 62);
+    ctx.lineTo(cx - 28, cy - 92);
+    ctx.lineTo(cx - 14, cy - 74);
+    ctx.lineTo(cx, cy - 96);
+    ctx.lineTo(cx + 14, cy - 74);
+    ctx.lineTo(cx + 28, cy - 92);
+    ctx.lineTo(cx + 28, cy - 62);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#e67e22';
+    ctx.fillRect(cx - 28, cy - 66, 56, 6);
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 76, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 // ============================================================
@@ -196,7 +243,12 @@ function drawCat() {
 // ============================================================
 
 function spawnParticles(x, y, amount) {
-  const emojis = ['🐟', '🐠', '✨', '🐾'];
+  let emojis = ['🐟', '🐠', '✨', '🐾'];
+  // Shop effects extend the click particle palette
+  if (typeof hasItem === 'function') {
+    if (hasItem('effect_sparkle')) emojis = emojis.concat(['✨', '🌟', '💫']);
+    if (hasItem('effect_rainbow')) emojis = emojis.concat(['🌈', '💜', '💛', '💚', '🐟']);
+  }
   const count = Math.min(5, Math.ceil(amount / 5));
 
   for (let i = 0; i < count; i++) {

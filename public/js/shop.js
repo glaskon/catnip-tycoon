@@ -123,6 +123,13 @@ function savePurchasedItems() {
   localStorage.setItem('catnip-shopcounts', JSON.stringify(shopCounts));
 }
 
+// Last purchased item with the given id prefix wins (purchases array is
+// in purchase order). Used by render.js for active skin/outfit/effect.
+function lastOwned(prefix) {
+  const list = purchasedItems.filter(id => id.startsWith(prefix));
+  return list.length ? list[list.length - 1] : null;
+}
+
 // Check if an once-type item has been purchased
 function hasItem(itemId) {
   return purchasedItems.includes(itemId);
@@ -289,7 +296,15 @@ function applyShopItem(itemId) {
       break;
     case 'effect_sparkle':
     case 'effect_rainbow':
-      // Cosmetic effects handled in render/spawnParticles
+      // Particle palettes read from ownership at click time (render.js)
+      break;
+    case 'skin_orange':
+    case 'skin_black':
+    case 'skin_siamese':
+    case 'outfit_hat':
+    case 'outfit_crown':
+      // Redraw the cat canvas with the new cosmetics
+      if (typeof drawCat === 'function') drawCat();
       break;
   }
 }
@@ -299,4 +314,5 @@ window.SHOP_ITEMS = SHOP_ITEMS;
 window.renderShop = renderShop;
 window.buyShopItem = buyShopItem;
 window.hasItem = hasItem;
+window.lastOwned = lastOwned;
 window.loadPurchasedItems = loadPurchasedItems;
