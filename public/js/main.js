@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Mark game ready so the loop can tick (guests are ready immediately;
+  // logged-in users become ready only after loadGame finishes above)
+  game.isReady = true;
+
   // Start game loops
   startGameLoops();
 

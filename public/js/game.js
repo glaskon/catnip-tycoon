@@ -26,6 +26,9 @@ const game = {
   // --- Offline time ---
   offlineTimeMinutes: 60, // Default 1 hour — can be extended via shop
 
+  // --- Initialization guard ---
+  isReady: false, // gameLoop runs only after loadGame / guest init
+
   // --- Cat Life (virtual pet, unlocked at prestige 3) ---
   catlife: null, // {hunger, lastUpdate, fedCount} — lazy-init in getCatLife()
 
@@ -565,6 +568,7 @@ function getCatnipShrineRate() {
 
 // Main game loop: runs every 100ms
 function gameLoop() {
+  if (!game.isReady) return;
   const now = Date.now();
   const delta = (now - game.lastTick) / 1000; // Convert to seconds
   game.lastTick = now;
