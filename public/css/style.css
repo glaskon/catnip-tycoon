@@ -172,6 +172,60 @@ html, body {
   display: inline-block;
 }
 
+/* Daily-reward ready badge (small gold dot on the 🎁 nav button) */
+.nav-btn.daily-ready::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  background: var(--gold, #f1c40f);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--gold, #f1c40f);
+}
+
+/* --- Daily reward cycle --- */
+.daily-cycle {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 0 auto 4px;
+  max-width: 480px;
+}
+
+.daily-slot {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: var(--border-radius);
+  padding: 8px 2px;
+  text-align: center;
+}
+
+.daily-slot-day {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.daily-slot-reward {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
+.daily-slot-active {
+  border-color: var(--gold, #f1c40f);
+  background: rgba(241, 196, 15, 0.12);
+  box-shadow: 0 0 8px rgba(241, 196, 15, 0.35);
+}
+
+.daily-slot-done {
+  opacity: 0.55;
+  border-color: var(--success);
+}
+
 /* --- Panel Container --- */
 #panelContainer {
   flex: 1;

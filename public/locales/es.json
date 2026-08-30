@@ -250,5 +250,11 @@
   "achievements.goddessCat": "Gata Diosa",
   "achievements.goddessCatDesc": "Alcanza 100 prestigios",
   "prestige.endgameTitle": "Nivel Final Alcanzado",
-  "prestige.endgameBanner": "La Gata Diosa reina. El juego continúa — la producción sigue creciendo (+5% cada 10 prestigios)."
+  "prestige.endgameBanner": "La Gata Diosa reina. El juego continúa — la producción sigue creciendo (+5% cada 10 prestigios).",
+  "daily.streak": "Racha",
+  "daily.day": "Día",
+  "daily.claim": "Reclamar",
+  "daily.claimed": "¡Reclamado! Vuelve mañana",
+  "daily.claimedToast": "Recompensa diaria: ",
+  "daily.desc": "Vuelve cada día para reclamar recompensas. Si te saltas un día, la racha se reinicia. El ciclo se repite tras el día 7."
 }

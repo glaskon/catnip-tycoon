@@ -250,5 +250,11 @@
   "achievements.goddessCat": "Göttinnenkatze",
   "achievements.goddessCatDesc": "Erreiche 100 Prestiges",
   "prestige.endgameTitle": "Endstufe Erreicht",
-  "prestige.endgameBanner": "Die Göttinnenkatze regiert. Das Spiel geht weiter — die Produktion skaliert weiter (+5% pro 10 Prestiges)."
+  "prestige.endgameBanner": "Die Göttinnenkatze regiert. Das Spiel geht weiter — die Produktion skaliert weiter (+5% pro 10 Prestiges).",
+  "daily.streak": "Serie",
+  "daily.day": "Tag",
+  "daily.claim": "Einlösen",
+  "daily.claimed": "Eingelöst! Bis morgen",
+  "daily.claimedToast": "Tägliche Belohnung: ",
+  "daily.desc": "Komm jeden Tag zurück, um Belohnungen zu erhalten. Verpasse einen Tag und die Serie setzt zurück. Der Zyklus wiederholt sich nach Tag 7."
 }

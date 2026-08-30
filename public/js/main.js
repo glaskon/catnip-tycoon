@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderPrestigePanel();
   renderShop();
   renderAchievements();
+  renderDaily();
+  refreshDaily();
 
   console.log('[Catnip Tycoon] Ready!');
 });

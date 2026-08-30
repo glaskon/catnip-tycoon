@@ -61,6 +61,7 @@ const STATE_SCHEMA = {
   anchoredCatId: 'strOrNull', preservedUpgradeId: 'strOrNull',
   lastClickDate: 'str',
   catlife: 'catlife',
+  daily: 'daily',
   cats: 'arrCats',
   upgrades: 'arrUpgrades',
   achievements: 'arrStrings',
@@ -79,6 +80,16 @@ function validateCatLife(v) {
     if (k === 'fedCount') return isInt(v[k]);
     return false;
   });
+}
+
+function validateDaily(v) {
+  if (v === null) return true;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  if (keys.length !== 2) return false;
+  if (!isInt(v.count)) return false;
+  if (typeof v.lastClaimDate !== 'string' || v.lastClaimDate.length > 20) return false;
+  return true;
 }
 
 function validateState(s) {
@@ -101,6 +112,9 @@ function validateState(s) {
         break;
       case 'catlife':
         if (!validateCatLife(v)) return false;
+        break;
+      case 'daily':
+        if (!validateDaily(v)) return false;
         break;
       case 'arrStrings':
         if (!Array.isArray(v) || v.length > MAX_ARRAY_LEN || !v.every(isId)) return false;

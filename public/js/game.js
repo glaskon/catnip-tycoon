@@ -35,6 +35,9 @@ const game = {
   // --- Cat Life (virtual pet, unlocked at prestige 3) ---
   catlife: null, // {hunger, lastUpdate, fedCount} — lazy-init in getCatLife()
 
+  // --- Daily reward (login streak) ---
+  daily: null,    // {count, lastClaimDate} — lazy-init in getDaily()
+
   // --- Collections ---
   cats: [],
   // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
@@ -673,6 +676,7 @@ function buildSaveState() {
     offlineTimeMinutes: game.offlineTimeMinutes,
     activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()) })),
     catlife: game.catlife || null,
+    daily: game.daily || null,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
       id: u.id,
@@ -716,6 +720,12 @@ function applyGameState(state) {
       hunger: Math.min(100, safeNum(state.catlife.hunger, 100, 100)),
       lastUpdate: safeNum(state.catlife.lastUpdate, Date.now()),
       fedCount: safeNum(state.catlife.fedCount, 0),
+    };
+  }
+  if (state.daily && typeof state.daily === 'object') {
+    game.daily = {
+      count: safeNum(state.daily.count, 0, 1000000),
+      lastClaimDate: typeof state.daily.lastClaimDate === 'string' && state.daily.lastClaimDate.length <= 20 ? state.daily.lastClaimDate : '',
     };
   }
 

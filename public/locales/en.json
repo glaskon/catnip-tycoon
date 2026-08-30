@@ -250,5 +250,11 @@
   "achievements.goddessCat": "Goddess Cat",
   "achievements.goddessCatDesc": "Reach 100 prestiges",
   "prestige.endgameTitle": "Final Tier Reached",
-  "prestige.endgameBanner": "The Goddess Cat reigns. The game goes on — production keeps scaling (+5% per 10 prestiges)."
+  "prestige.endgameBanner": "The Goddess Cat reigns. The game goes on — production keeps scaling (+5% per 10 prestiges).",
+  "daily.streak": "Streak",
+  "daily.day": "Day",
+  "daily.claim": "Claim",
+  "daily.claimed": "Claimed! See you tomorrow",
+  "daily.claimedToast": "Daily reward: ",
+  "daily.desc": "Come back every day to claim rewards. Miss a day and the streak resets. The cycle repeats after day 7."
 }
