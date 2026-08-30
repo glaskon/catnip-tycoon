@@ -274,9 +274,11 @@ function buyShopItem(itemId) {
 function applyShopItem(itemId) {
   switch (itemId) {
     case 'boost_speed_1h':
-      game.speedMultiplier = 2;
+      // Multiply (not override) so it composes with elixir boosts and
+      // other active multipliers; divided back on expiry.
+      game.speedMultiplier *= 2;
       setTimeout(() => {
-        game.speedMultiplier = 1;
+        game.speedMultiplier /= 2;
         showToast('⚡ Speed boost expired');
         render();
       }, 3600000); // 1 hour
