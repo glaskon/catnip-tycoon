@@ -36,29 +36,107 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // --- Validation: reject arbitrary/malicious game state from the client ---
-const MAX_DEPTH = 4;
 const MAX_ARRAY_LEN = 1000;
 const MAX_STR_LEN = 200;
 const MAX_KEYS = 200;
 const MAX_NUM = 1e30;
 
-function isValidStateValue(v, depth) {
-  if (depth > MAX_DEPTH) return false;
+function isFiniteNum(v) {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MAX_NUM;
+}
+function isInt(v) {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_NUM;
+}
+function isId(v) {
+  return typeof v === 'string' && v.length >= 1 && v.length <= 100;
+}
+
+// Top-level schema: key -> type (allowlist; unknown keys are rejected)
+const STATE_SCHEMA = {
+  fish: 'num', fishPerClick: 'num', fishPerSecond: 'num', catnip: 'num',
+  diamonds: 'num', totalFishEarned: 'num', prestigeCount: 'int',
+  speedMultiplier: 'num', elixirs: 'num', clickCount: 'int',
+  luckyCatnipCount: 'int', dailyClicks: 'int', totalCatsBought: 'int',
+  offlineTimeMinutes: 'num',
+  anchoredCatId: 'strOrNull', preservedUpgradeId: 'strOrNull',
+  lastClickDate: 'str',
+  catlife: 'catlife',
+  cats: 'arrCats',
+  upgrades: 'arrUpgrades',
+  achievements: 'arrStrings',
+  purchasedItems: 'arrStrings',
+  shopCounts: 'objInts',
+};
+
+function validateCatLife(v) {
   if (v === null) return true;
-  const t = typeof v;
-  if (t === 'number') return Number.isFinite(v) && v >= 0 && v <= MAX_NUM;
-  if (t === 'boolean') return true;
-  if (t === 'string') return v.length <= MAX_STR_LEN;
-  if (Array.isArray(v)) {
-    return v.length <= MAX_ARRAY_LEN && v.every(x => isValidStateValue(x, depth + 1));
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  if (keys.length === 0 || keys.length > 3) return false;
+  return keys.every(k => {
+    if (k === 'hunger') return typeof v[k] === 'number' && Number.isFinite(v[k]) && v[k] >= 0 && v[k] <= 100;
+    if (k === 'lastUpdate') return isInt(v[k]);
+    if (k === 'fedCount') return isInt(v[k]);
+    return false;
+  });
+}
+
+function validateState(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+  for (const k of Object.keys(s)) {
+    if (!(k in STATE_SCHEMA)) return false; // unknown key
+    const v = s[k];
+    switch (STATE_SCHEMA[k]) {
+      case 'num':
+        if (!isFiniteNum(v)) return false;
+        break;
+      case 'int':
+        if (!isInt(v)) return false;
+        break;
+      case 'str':
+        if (typeof v !== 'string' || v.length > MAX_STR_LEN) return false;
+        break;
+      case 'strOrNull':
+        if (v !== null && !isId(v)) return false;
+        break;
+      case 'catlife':
+        if (!validateCatLife(v)) return false;
+        break;
+      case 'arrStrings':
+        if (!Array.isArray(v) || v.length > MAX_ARRAY_LEN || !v.every(isId)) return false;
+        break;
+      case 'objInts':
+        if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
+        {
+          const ks = Object.keys(v);
+          if (ks.length > MAX_KEYS ||
+              !ks.every(key => key.length >= 1 && key.length <= 100 && isInt(v[key]))) return false;
+        }
+        break;
+      case 'arrCats':
+        if (!Array.isArray(v) || v.length > 200) return false;
+        for (const e of v) {
+          if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
+          if (Object.keys(e).length !== 2) return false;
+          if (!isId(e.id) || !isInt(e.count)) return false;
+        }
+        break;
+      case 'arrUpgrades':
+        if (!Array.isArray(v) || v.length > 100) return false;
+        for (const e of v) {
+          if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
+          if (!isId(e.id)) return false;
+          const ks = Object.keys(e);
+          if (!ks.every(key => key === 'id' || key === 'purchased' || key === 'level')) return false;
+          if ('purchased' in e && typeof e.purchased !== 'boolean') return false;
+          if ('level' in e && !isInt(e.level)) return false;
+        }
+        break;
+      default:
+        return false;
+    }
   }
-  if (t === 'object') {
-    const keys = Object.keys(v);
-    return keys.length <= MAX_KEYS &&
-      keys.every(k => k.length > 0 && k.length <= 100) &&
-      keys.every(k => isValidStateValue(v[k], depth + 1));
-  }
-  return false;
+  return true;
 }
 
 /**
@@ -74,7 +152,7 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!game_state || typeof game_state !== 'object') {
       return res.status(400).json({ error: 'game_state object is required' });
     }
-    if (!isValidStateValue(game_state, 0)) {
+    if (!validateState(game_state)) {
       return res.status(400).json({ error: 'Invalid game_state' });
     }
 
