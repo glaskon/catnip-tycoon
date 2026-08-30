@@ -62,6 +62,7 @@ const STATE_SCHEMA = {
   lastClickDate: 'str',
   catlife: 'catlife',
   daily: 'daily',
+  gacha: 'gacha',
   cats: 'arrCats',
   upgrades: 'arrUpgrades',
   achievements: 'arrStrings',
@@ -92,6 +93,21 @@ function validateDaily(v) {
   return true;
 }
 
+function validateGacha(v) {
+  if (v === null) return true;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  const keys = Object.keys(v);
+  if (keys.length !== 3) return false;
+  if (!isInt(v.totalPulls)) return false;
+  if (!isInt(v.pity) || v.pity > 10) return false;
+  const counts = v.counts;
+  if (counts === null || typeof counts !== 'object' || Array.isArray(counts)) return false;
+  const cks = Object.keys(counts);
+  if (cks.length > MAX_KEYS) return false;
+  if (!cks.every(key => key.length >= 1 && key.length <= 100 && isInt(counts[key]))) return false;
+  return true;
+}
+
 function validateState(s) {
   if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
   for (const k of Object.keys(s)) {
@@ -115,6 +131,9 @@ function validateState(s) {
         break;
       case 'daily':
         if (!validateDaily(v)) return false;
+        break;
+      case 'gacha':
+        if (!validateGacha(v)) return false;
         break;
       case 'arrStrings':
         if (!Array.isArray(v) || v.length > MAX_ARRAY_LEN || !v.every(isId)) return false;

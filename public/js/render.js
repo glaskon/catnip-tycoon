@@ -96,6 +96,7 @@ const CAT_SKINS = {
   skin_orange:  { fur: '#f4a261', whisker: '#8b5e3c', mouth: '#6b4c3b', ear: '#f4a261' },
   skin_black:   { fur: '#2d3436', whisker: '#9aa5a8', mouth: '#8a9498', ear: '#2d3436' },
   skin_siamese: { fur: '#f5e6d3', whisker: '#a9825e', mouth: '#8b5e3c', ear: '#8b5e3c' },
+  skin_galaxy:  { fur: '#5b4b8a', whisker: '#c5b3e8', mouth: '#8f7fc0', ear: '#4a3d75' }, // gacha-exclusive (legendary)
 };
 
 function drawCat() {
@@ -265,6 +266,7 @@ function spawnParticles(x, y, amount) {
   if (typeof hasItem === 'function') {
     if (hasItem('effect_sparkle')) emojis = emojis.concat(['✨', '🌟', '💫']);
     if (hasItem('effect_rainbow')) emojis = emojis.concat(['🌈', '💜', '💛', '💚', '🐟']);
+    if (hasItem('effect_aurora')) emojis = emojis.concat(['🌌', '🔮', '💠', '❄️']); // gacha-exclusive (epic)
   }
   const count = Math.min(5, Math.ceil(amount / 5));
 

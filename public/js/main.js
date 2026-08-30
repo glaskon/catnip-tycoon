@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderUpgrades();
   renderPrestigePanel();
   renderShop();
+  renderGacha();
   renderAchievements();
   renderDaily();
   refreshDaily();

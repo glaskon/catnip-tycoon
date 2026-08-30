@@ -38,6 +38,9 @@ const game = {
   // --- Daily reward (login streak) ---
   daily: null,    // {count, lastClaimDate} — lazy-init in getDaily()
 
+  // --- Gacha (cosmetic pulls) ---
+  gacha: null,    // {totalPulls, pity, counts} — lazy-init in getGacha()
+
   // --- Collections ---
   cats: [],
   // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
@@ -687,6 +690,7 @@ function buildSaveState() {
     activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()) })),
     catlife: game.catlife || null,
     daily: game.daily || null,
+    gacha: game.gacha || null,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
       id: u.id,
@@ -737,6 +741,17 @@ function applyGameState(state) {
       count: safeNum(state.daily.count, 0, 1000000),
       lastClaimDate: typeof state.daily.lastClaimDate === 'string' && state.daily.lastClaimDate.length <= 20 ? state.daily.lastClaimDate : '',
     };
+  }
+  if (state.gacha && typeof state.gacha === 'object') {
+    const gCounts = (state.gacha.counts && typeof state.gacha.counts === 'object' && !Array.isArray(state.gacha.counts)) ? state.gacha.counts : {};
+    game.gacha = {
+      totalPulls: safeNum(state.gacha.totalPulls, 0, 100000000),
+      pity: Math.min(safeNum(state.gacha.pity, 0, 10), 10),
+      counts: {},
+    };
+    for (const [k, v] of Object.entries(gCounts)) {
+      if (typeof k === 'string' && k.length <= 100) game.gacha.counts[k] = safeNum(v, 0, 1000000);
+    }
   }
 
   // Restore cats

@@ -292,10 +292,14 @@ function applyShopItem(itemId) {
     case 'skin_orange':
     case 'skin_black':
     case 'skin_siamese':
+    case 'skin_galaxy':
     case 'outfit_hat':
     case 'outfit_crown':
       // Redraw the cat canvas with the new cosmetics
       if (typeof drawCat === 'function') drawCat();
+      break;
+    case 'effect_aurora':
+      // Particle palettes read from ownership at click time (render.js)
       break;
   }
 }

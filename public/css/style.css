@@ -258,6 +258,101 @@ html, body {
   100% { opacity: 0; }
 }
 
+/* --- Gacha panel --- */
+.gacha-rates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0 6px;
+}
+
+.gacha-rate {
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid;
+}
+
+.gacha-rate-common     { color: #9aa5a8; border-color: #9aa5a8; }
+.gacha-rate-rare       { color: #74b9ff; border-color: #74b9ff; }
+.gacha-rate-epic       { color: #a29bfe; border-color: #a29bfe; }
+.gacha-rate-legendary  { color: #ffd166; border-color: #ffd166; }
+
+.gacha-reveal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 14px auto;
+  max-width: 480px;
+}
+
+.gacha-card {
+  width: 88px;
+  padding: 10px 4px;
+  border-radius: var(--border-radius);
+  border: 2px solid;
+  text-align: center;
+  background: var(--bg-tertiary);
+  animation: gachaRevealIn 0.3s ease;
+}
+
+@keyframes gachaRevealIn {
+  from { transform: scale(0.6) rotateY(90deg); opacity: 0; }
+  to   { transform: scale(1) rotateY(0deg); opacity: 1; }
+}
+
+.gacha-card-icon { font-size: 1.8rem; }
+.gacha-card-name { font-size: 0.7rem; margin-top: 4px; color: var(--text-primary); }
+.gacha-card-rarity { font-size: 0.6rem; margin-top: 2px; font-weight: bold; }
+.gacha-card-new { font-size: 0.65rem; margin-top: 4px; color: var(--gold, #f1c40f); font-weight: bold; }
+.gacha-card-dup { font-size: 0.65rem; margin-top: 4px; color: var(--text-muted); }
+
+.gacha-card-common { border-color: #9aa5a8; }
+.gacha-card-common .gacha-card-rarity { color: #9aa5a8; }
+.gacha-card-rare { border-color: #74b9ff; }
+.gacha-card-rare .gacha-card-rarity { color: #74b9ff; }
+.gacha-card-epic { border-color: #a29bfe; box-shadow: 0 0 10px rgba(162, 155, 254, 0.4); }
+.gacha-card-epic .gacha-card-rarity { color: #a29bfe; }
+.gacha-card-legendary {
+  border-color: #ffd166;
+  background: linear-gradient(160deg, rgba(255, 209, 102, 0.18) 0%, var(--bg-tertiary) 60%);
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.55);
+}
+.gacha-card-legendary .gacha-card-rarity { color: #ffd166; }
+
+.gacha-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 360px;
+  margin: 8px auto;
+}
+
+.gacha-slot {
+  background: var(--bg-tertiary);
+  border: 1px solid;
+  border-radius: var(--border-radius);
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.gacha-slot-icon { font-size: 1.4rem; }
+.gacha-slot-name { font-size: 0.65rem; margin-top: 3px; color: var(--text-secondary); }
+.gacha-slot-count { font-size: 0.6rem; color: var(--text-muted); margin-top: 2px; }
+
+.gacha-slot-common     { border-color: #9aa5a8; }
+.gacha-slot-rare       { border-color: #74b9ff; }
+.gacha-slot-epic       { border-color: #a29bfe; }
+.gacha-slot-legendary  { border-color: #ffd166; }
+
+.gacha-slot-locked {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+}
+
 /* --- Panel Container --- */
 #panelContainer {
   flex: 1;
