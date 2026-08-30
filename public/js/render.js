@@ -287,12 +287,22 @@ function formatNumber(num) {
   return num.toFixed(1);
 }
 
+// Cached DOM writer for stat elements: skip textContent updates when unchanged.
+const _statsCache = {};
+function setStat(id, value) {
+  const s = String(value);
+  if (_statsCache[id] === s) return;
+  _statsCache[id] = s;
+  const el = document.getElementById(id);
+  if (el) el.textContent = s;
+}
+
 // Update the stats display
 function updateStats() {
-  document.getElementById('fishCount').textContent = formatNumber(game.fish);
-  document.getElementById('fishPerSec').textContent = formatNumber(game.fishPerSecond);
-  document.getElementById('catnipCount').textContent = formatNumber(Math.floor(game.catnip));
-  document.getElementById('diamondCount').textContent = formatNumber(Math.floor(game.diamonds));
+  setStat('fishCount', formatNumber(game.fish));
+  setStat('fishPerSec', formatNumber(game.fishPerSecond));
+  setStat('catnipCount', formatNumber(Math.floor(game.catnip)));
+  setStat('diamondCount', formatNumber(Math.floor(game.diamonds)));
   renderTopBar();
 
   // Prestige panel hot numbers — updated in place (no DOM rebuild) so the
@@ -302,41 +312,41 @@ function updateStats() {
   if (prestigeBar && typeof getCatnipNeeded === 'function') {
     const needed = getCatnipNeeded();
     const pct = Math.min(100, (game.totalFishEarned / needed) * 100);
-    prestigeBar.style.width = pct + '%';
-    prestigeBar.textContent = pct > 15 ? pct.toFixed(1) + '%' : '';
+    const widthStr = pct + '%';
+    if (_statsCache['prestigeBar.width'] !== widthStr) {
+      _statsCache['prestigeBar.width'] = widthStr;
+      prestigeBar.style.width = widthStr;
+    }
+    setStat('prestigeBar', pct > 15 ? pct.toFixed(1) + '%' : '');
   }
   const prestigeFishLine = document.getElementById('prestigeFishLine');
   if (prestigeFishLine) {
-    prestigeFishLine.textContent = `🐟 ${formatNumber(game.totalFishEarned)} / ${formatNumber(getCatnipNeeded())} ${i18n.t('prestige.needed')}`;
+    setStat('prestigeFishLine', `🐟 ${formatNumber(game.totalFishEarned)} / ${formatNumber(getCatnipNeeded())} ${i18n.t('prestige.needed')}`);
   }
   const prestigeNeedMore = document.getElementById('prestigeNeedMore');
   if (prestigeNeedMore) {
-    prestigeNeedMore.textContent = `Need ${formatNumber(Math.max(0, getCatnipNeeded() - game.totalFishEarned))} more fish`;
+    setStat('prestigeNeedMore', `Need ${formatNumber(Math.max(0, getCatnipNeeded() - game.totalFishEarned))} more fish`);
   }
   const prestigeCashbackLine = document.getElementById('prestigeCashbackLine');
   if (prestigeCashbackLine) {
-    prestigeCashbackLine.textContent = `🐟 Kocia Łaska: +🌿 ${formatNumber(Math.floor(game.totalFishEarned * 0.1 / 100))} catnip cashback!`;
+    setStat('prestigeCashbackLine', `🐟 Kocia Łaska: +🌿 ${formatNumber(Math.floor(game.totalFishEarned * 0.1 / 100))} catnip cashback!`);
   }
   const prestigeCatnipVal = document.getElementById('prestigeCatnipVal');
   if (prestigeCatnipVal) {
-    prestigeCatnipVal.textContent = formatNumber(Math.floor(game.catnip));
+    setStat('prestigeCatnipVal', formatNumber(Math.floor(game.catnip)));
   }
   const prestigeElixirVal = document.getElementById('prestigeElixirVal');
   if (prestigeElixirVal) {
-    prestigeElixirVal.textContent = formatNumber(Math.floor(game.elixirs));
+    setStat('prestigeElixirVal', formatNumber(Math.floor(game.elixirs)));
   }
 }
 
 // Update the top bar resource display
 function renderTopBar() {
-  const resFish = document.getElementById('resFish');
-  const resFps = document.getElementById('resFps');
-  const resCatnip = document.getElementById('resCatnip');
-  const resDiamonds = document.getElementById('resDiamonds');
-  if (resFish) resFish.textContent = formatNumber(game.fish);
-  if (resFps) resFps.textContent = formatNumber(game.fishPerSecond);
-  if (resCatnip) resCatnip.textContent = formatNumber(Math.floor(game.catnip));
-  if (resDiamonds) resDiamonds.textContent = formatNumber(Math.floor(game.diamonds));
+  setStat('resFish', formatNumber(game.fish));
+  setStat('resFps', formatNumber(game.fishPerSecond));
+  setStat('resCatnip', formatNumber(Math.floor(game.catnip)));
+  setStat('resDiamonds', formatNumber(Math.floor(game.diamonds)));
 }
 
 // Stable hover highlight: after an innerHTML rebuild the browser drops :hover on
