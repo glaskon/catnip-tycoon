@@ -393,7 +393,7 @@ function renderCats() {
     if (!visible) { sig += '|x'; continue; }
     const c = game.cats[i];
     const cost = c.currentCost;
-    const afford = c.currency === 'catnip' ? game.catnip >= cost : game.fish >= cost;
+    const afford = canAfford(cost, c.currency);
     sig += '|' + c.count + ':' + (afford ? 1 : 0) + ':' + (c.unlocked ? 1 : 0);
   }
   if (sig === _catsRenderSig) return;
@@ -406,7 +406,7 @@ function renderCats() {
     const cat = game.cats[i];
     const name = i18n.t(cat.nameKey, cat.id);
     const cost = cat.currentCost;
-    const canAfford = cat.currency === 'catnip' ? game.catnip >= cost : game.fish >= cost;
+    const canAfford = window.canAfford(cost, cat.currency);
     const isUnlocked = cat.unlocked;
     const prestigeReq = CAT_DEFINITIONS[i].requiresPrestige;
 
@@ -446,9 +446,7 @@ function renderUpgrades() {
     const u = game.upgrades[i];
     const isStackable = u.type === 'stackable';
     const cost = isStackable ? u.currentCost : u.cost;
-    const afford = u.currency === 'fish' ? game.fish >= cost
-      : u.currency === 'catnip' ? game.catnip >= cost
-      : game.diamonds >= cost;
+    const afford = canAfford(cost, u.currency);
     sig += '|' + (isStackable ? u.level : (u.purchased ? 1 : 0)) + ':' + (afford ? 1 : 0);
   }
   if (sig === _upgradesRenderSig) return;
@@ -464,11 +462,7 @@ function renderUpgrades() {
     const isStackable = upg.type === 'stackable';
     const isPurchased = isStackable ? upg.level > 0 : upg.purchased;
     const cost = isStackable ? upg.currentCost : upg.cost;
-    const canAfford = upg.currency === 'fish'
-      ? game.fish >= cost
-      : upg.currency === 'catnip'
-        ? game.catnip >= cost
-        : game.diamonds >= cost;
+    const canAfford = window.canAfford(cost, upg.currency);
 
     let cardClass = '';
     if (isStackable && upg.level > 0) cardClass = 'unlocked';

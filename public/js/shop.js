@@ -169,9 +169,7 @@ function renderShop() {
     const owned = !isItemStackable(item) && hasItem(item.id);
     const count = getShopItemCount(item.id);
     const cost = getShopItemCost(item);
-    const afford = item.currency === 'diamonds' ? game.diamonds >= cost
-      : item.currency === 'catnip' ? game.catnip >= cost
-      : game.fish >= cost;
+    const afford = canAfford(cost, item.currency);
     sig += '|' + (owned ? 1 : 0) + ':' + count + ':' + (afford ? 1 : 0);
   }
   sig += '|' + Math.floor(game.diamonds);
@@ -184,11 +182,7 @@ function renderShop() {
     const owned = !isItemStackable(item) && hasItem(item.id);
     const currencyIcon = item.currency === 'diamonds' ? '💎' : item.currency === 'catnip' ? '🌿' : '🐟';
     const cost = getShopItemCost(item);
-    const canAfford = item.currency === 'diamonds'
-      ? game.diamonds >= cost
-      : item.currency === 'catnip'
-        ? game.catnip >= cost
-        : game.fish >= cost;
+    const canAfford = window.canAfford(cost, item.currency);
 
     html += `<div class="shop-item">`;
     html += `<span class="shop-item-icon">${item.icon}</span>`;

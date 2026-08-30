@@ -270,6 +270,13 @@ function calculateClickValue() {
   return clickValue;
 }
 
+// Check if player can afford a cost in given currency
+function canAfford(cost, currency) {
+  if (currency === 'catnip') return game.catnip >= cost;
+  if (currency === 'diamonds') return game.diamonds >= cost;
+  return game.fish >= cost;
+}
+
 // Click the cat: add fish, animate, check achievements
 function clickCat(event) {
   let clickValue = calculateClickValue();
@@ -357,14 +364,7 @@ function buyCat(index) {
 
   showDebug('buyCat: ' + cat.id + ' cost=' + cost + ' currency=' + currency + ' fish=' + game.fish.toFixed(0) + ' catnip=' + game.catnip.toFixed(0));
 
-  let canAfford = false;
-  if (currency === 'catnip') {
-    canAfford = game.catnip >= cost;
-  } else {
-    canAfford = game.fish >= cost;
-  }
-
-  if (!canAfford) {
+  if (!canAfford(cost, currency)) {
     showDebug('buyCat: cannot afford ' + cost + ' ' + currency);
     return false;
   }
@@ -399,9 +399,7 @@ function buyUpgrade(index) {
   const currency = upg.currency;
 
   // Check if player can afford
-  if (currency === 'fish' && game.fish < cost) return false;
-  if (currency === 'catnip' && game.catnip < cost) return false;
-  if (currency === 'diamonds' && game.diamonds < cost) return false;
+  if (!canAfford(cost, currency)) return false;
 
   // Deduct cost
   if (currency === 'fish') game.fish -= cost;
@@ -986,6 +984,7 @@ window.startGameLoops = startGameLoops;
 window.addFish = addFish;
 window.spendFish = spendFish;
 window.recalcFPS = recalcFPS;
+window.canAfford = canAfford;
 window.hasUpgrade = hasUpgrade;
 window.getUpgradeLevel = getUpgradeLevel;
 window.getCatCost = getCatCost;
