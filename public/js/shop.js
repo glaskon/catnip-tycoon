@@ -293,7 +293,7 @@ function applyShopItem(itemId) {
       break;
     case 'offline_catnip':
     case 'offline_diamond':
-      game.offlineTimeMinutes += 30;
+      game.offlineTimeMinutes = Math.min(game.offlineTimeMinutes + 30, OFFLINE_MAX_MIN);
       showToast(i18n.t('shop.timeExtended', '⏰ Offline time extended to {m} min').replace('{m}', String(game.offlineTimeMinutes)));
       break;
     case 'effect_sparkle':
