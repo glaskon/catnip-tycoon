@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 8000;
 
 // --- Middleware ---
 app.set('trust proxy', 1);               // Behind Coolify proxy — real client IP from X-Forwarded-For
-app.use(cors());                      // Allow cross-origin requests from game client
+app.use(cors({ origin: ['https://ct-d.1.booster.rentals', 'https://ct.1.booster.rentals'] })); // Restrict CORS to allowed origins
 app.use(express.json());              // Parse JSON request bodies
 
 // --- Rate limiting ---
