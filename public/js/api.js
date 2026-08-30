@@ -8,14 +8,17 @@ const api = {
     this.token = localStorage.getItem('catnip-token');
   },
 
-  // Generic API call wrapper
-  async apiCall(endpoint, method = 'GET', body = null) {
+  // Generic API call wrapper (30s timeout via AbortController)
+  async apiCall(endpoint, method = 'GET', body = null, timeoutMs = 30000, extraOptions = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const options = { method, headers };
+    const options = { method, headers, ...extraOptions };
+    if (!options.signal) {
+      options.signal = AbortSignal.timeout(timeoutMs);
+    }
     if (body && method !== 'GET') {
       options.body = JSON.stringify(body);
     }
@@ -82,8 +85,8 @@ const api = {
   },
 
   // --- Leaderboard ---
-  async getLeaderboard() {
-    return this.apiCall('/leaderboard', 'GET');
+  async getLeaderboard(options = {}) {
+    return this.apiCall('/leaderboard', 'GET', null, 30000, options);
   },
 };
 

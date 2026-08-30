@@ -5,7 +5,17 @@ let _lbSig = null;
 let _lbLoaded = false;
 let _lbFetching = false;
 let _lbLastFetch = 0;
+let _lbAbort = null; // AbortController for in-flight fetch
 const LB_FETCH_INTERVAL = 30000; // refetch at most once per 30s
+
+// Abort any in-flight leaderboard fetch (call when switching away from panel)
+function abortLeaderboardFetch() {
+  if (_lbAbort) {
+    _lbAbort.abort();
+    _lbAbort = null;
+    _lbFetching = false;
+  }
+}
 
 // Called from gameLoop every 100ms while the leaderboard tab is active.
 // Must NOT fetch or rebuild the DOM every tick — that is what made the table
@@ -17,6 +27,9 @@ function renderLeaderboard() {
   const now = Date.now();
   if (_lbFetching || now - _lbLastFetch < LB_FETCH_INTERVAL) return;
 
+  // Abort any previous in-flight request
+  if (_lbAbort) { _lbAbort.abort(); _lbAbort = null; }
+  _lbAbort = new AbortController();
   _lbFetching = true;
   _lbLastFetch = now;
 
@@ -25,7 +38,7 @@ function renderLeaderboard() {
     container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Loading leaderboard...</p>';
   }
 
-  api.getLeaderboard()
+  api.getLeaderboard({ signal: _lbAbort.signal })
     .then(data => {
       _lbLoaded = true;
       const entries = data.leaderboard || [];
@@ -64,6 +77,7 @@ function renderLeaderboard() {
       restoreCardHover(container);
     })
     .catch(err => {
+      if (err.name === 'AbortError') return; // silently ignore cancelled fetches
       console.error('[Leaderboard] Error:', err.message);
       if (!_lbLoaded) {
         container.innerHTML = `<p style="text-align: center; color: var(--danger);">❌ Failed to load leaderboard</p>`;
@@ -71,6 +85,7 @@ function renderLeaderboard() {
     })
     .finally(() => {
       _lbFetching = false;
+      _lbAbort = null;
     });
 }
 
