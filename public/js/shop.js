@@ -268,22 +268,12 @@ function buyShopItem(itemId) {
 function applyShopItem(itemId) {
   switch (itemId) {
     case 'boost_speed_1h':
-      // Multiply (not override) so it composes with elixir boosts and
-      // other active multipliers; divided back on expiry.
-      game.speedMultiplier *= 2;
-      setTimeout(() => {
-        game.speedMultiplier /= 2;
-        showToast('⚡ Speed boost expired');
-        render();
-      }, 3600000); // 1 hour
+      // Transient boost — tracked in activeBoosts (survives reload, composes
+      // with elixirs), expires automatically via recomputeBoostedValues()
+      applyBoost('speed', 2, 3600000); // 1 hour
       break;
     case 'boost_click_1h':
-      game.fishPerClick *= 3;
-      setTimeout(() => {
-        game.fishPerClick /= 3;
-        showToast('👆 Click boost expired');
-        render();
-      }, 3600000);
+      applyBoost('click', 3, 3600000); // 1 hour
       break;
     case 'offline_catnip':
     case 'offline_diamond':

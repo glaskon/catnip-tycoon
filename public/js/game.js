@@ -3,12 +3,15 @@ const game = {
   // --- Resources ---
   fish: 0,  // No starter — everything earned by clicking
   fishPerClick: 1,
+  baseFishPerClick: 1,
   fishPerSecond: 0,
   catnip: 0,
   diamonds: 0,
   totalFishEarned: 0,
   prestigeCount: 0,
   speedMultiplier: 1,
+  productionMultiplier: 1,
+  activeBoosts: [],
   elixirs: 0,
 
   // --- Prestige persistence ---
@@ -129,6 +132,10 @@ function initGame() {
     }
     return { ...def, purchased: false };
   });
+
+  game.baseFishPerClick = 1;
+  game.activeBoosts = [];
+  game.productionMultiplier = 1;
 }
 
 // ============================================================
@@ -207,10 +214,7 @@ function recalcFPS() {
     base *= 100;
   }
 
-  // Elixir production boost
-  if (game._prodBoost) {
-    base *= 10;
-  }
+  // Elixir production boost — handled via activeBoosts (recomputeBoostedValues)
 
   // Quantum Karma active: ×10
   if (game._quantumActive) {
@@ -221,6 +225,8 @@ function recalcFPS() {
   if (typeof catLifeProductionMultiplier === 'function') {
     base *= catLifeProductionMultiplier();
   }
+
+  base *= (game.productionMultiplier || 1);
 
   game.fishPerSecond = base;
 }
@@ -268,6 +274,30 @@ function calculateClickValue() {
   }
 
   return clickValue;
+}
+
+function applyBoost(kind, mult, durationMs) {
+  game.activeBoosts.push({ kind: kind, mult: mult, expiresAt: Date.now() + durationMs });
+  recomputeBoostedValues();
+}
+
+function recomputeBoostedValues() {
+  const now = Date.now();
+  const before = game.activeBoosts.length;
+  game.activeBoosts = game.activeBoosts.filter(b => b.expiresAt > now);
+  if (game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
+  const prevPP = game.productionMultiplier;
+  let sp = 1, cp = 1, pp = 1;
+  for (const b of game.activeBoosts) {
+    if (b.kind === 'speed') sp *= b.mult;
+    else if (b.kind === 'click') cp *= b.mult;
+    else if (b.kind === 'production') pp *= b.mult;
+  }
+  game.speedMultiplier = sp;
+  game.fishPerClick = game.baseFishPerClick * cp;
+  game.productionMultiplier = pp;
+  // Production multiplier affects fishPerSecond — recalc only when it changes
+  if (pp !== prevPP && typeof recalcFPS === 'function') recalcFPS();
 }
 
 // Check if player can afford a cost in given currency
@@ -502,6 +532,9 @@ function prestige() {
   // Reset everything except catnip, diamonds, prestigeCount
   game.fish = 0;
   game.fishPerClick = 1;
+  game.baseFishPerClick = 1;
+  game.activeBoosts = [];
+  game.productionMultiplier = 1;
   game.fishPerSecond = 0;
   game.totalFishEarned = 0;
   game.clickCount = 0;
@@ -567,6 +600,7 @@ function getCatnipShrineRate() {
 // Main game loop: runs every 100ms
 function gameLoop() {
   if (!game.isReady) return;
+  recomputeBoostedValues();
   const now = Date.now();
   const delta = (now - game.lastTick) / 1000; // Convert to seconds
   game.lastTick = now;
@@ -620,13 +654,13 @@ const SAVE_KEY = 'catnip-save';
 function buildSaveState() {
   return {
     fish: game.fish,
-    fishPerClick: game.fishPerClick,
+    fishPerClick: game.baseFishPerClick,
     fishPerSecond: game.fishPerSecond,
     catnip: game.catnip,
     diamonds: game.diamonds,
     totalFishEarned: game.totalFishEarned,
     prestigeCount: game.prestigeCount,
-    speedMultiplier: game.speedMultiplier,
+    speedMultiplier: 1,
     elixirs: game.elixirs,
     anchoredCatId: game.anchoredCatId,
     preservedUpgradeId: game.preservedUpgradeId,
@@ -636,6 +670,7 @@ function buildSaveState() {
     lastClickDate: game.lastClickDate || '',
     totalCatsBought: game.totalCatsBought,
     offlineTimeMinutes: game.offlineTimeMinutes,
+    activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()) })),
     catlife: game.catlife || null,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
@@ -659,6 +694,7 @@ function applyGameState(state) {
 
   game.fish = safeNum(state.fish, 0);
   game.fishPerClick = safeNum(state.fishPerClick, 1);
+  game.baseFishPerClick = safeNum(state.fishPerClick, 1);
   game.fishPerSecond = safeNum(state.fishPerSecond, 0);
   game.catnip = safeNum(state.catnip, 0);
   game.diamonds = safeNum(state.diamonds, 0);
@@ -741,6 +777,9 @@ function applyGameState(state) {
   const savedShopCounts = (state.shopCounts && typeof state.shopCounts === 'object' && !Array.isArray(state.shopCounts)) ? state.shopCounts : {};
   window.shopCounts = savedShopCounts;
   localStorage.setItem('catnip-shopcounts', JSON.stringify(savedShopCounts));
+
+  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && typeof b.mult === 'number' && b.mult > 0 && typeof b.remainingMs === 'number' && b.remainingMs > 0).map(b => ({ kind: ['speed','click','production'].indexOf(b.kind) >= 0 ? b.kind : 'speed', mult: b.mult, expiresAt: Date.now() + b.remainingMs }));
+  recomputeBoostedValues();
 
   recalcFPS();
   render();

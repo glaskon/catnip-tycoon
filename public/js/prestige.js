@@ -94,34 +94,15 @@ function useElixirBoost(type) {
   
   switch (type) {
     case 'speed':
-      game.speedMultiplier *= 10;
-      setTimeout(() => {
-        game.speedMultiplier /= 10;
-        showToast(i18n.t('toast.speedExpired'));
-        render();
-      }, 30000);
+      applyBoost('speed', 10, 30000); // ×10 for 30s
       showToast(i18n.t('toast.speedBoost'));
       break;
     case 'click':
-      game.fishPerClick *= 5;
-      setTimeout(() => {
-        game.fishPerClick /= 5;
-        showToast(i18n.t('toast.clickExpired'));
-        render();
-      }, 120000);
+      applyBoost('click', 5, 120000); // ×5 for 2min
       showToast(i18n.t('toast.clickBoost'));
       break;
     case 'production':
-      // 10x production for 30 seconds
-      // We'll handle this via a temporary multiplier in recalcFPS
-      game._prodBoost = true;
-      setTimeout(() => {
-        game._prodBoost = false;
-        showToast(i18n.t('toast.prodExpired'));
-        recalcFPS();
-        render();
-      }, 30000);
-      recalcFPS();
+      applyBoost('production', 10, 30000); // ×10 production for 30s
       showToast(i18n.t('toast.prodBoost'));
       break;
   }
