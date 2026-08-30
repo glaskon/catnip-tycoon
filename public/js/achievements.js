@@ -180,9 +180,9 @@ const ACHIEVEMENTS = [
     nameKey: 'achievements.upgradeMaster',
     descKey: 'achievements.upgradeMasterDesc',
     icon: '⚙️',
-    condition: () => game.upgrades.every(u => u.purchased),
+    condition: () => game.upgrades.every(u => u.type === 'stackable' ? (u.level || 0) > 0 : u.purchased),
     progress: () => ({
-      current: game.upgrades.filter(u => u.purchased).length,
+      current: game.upgrades.filter(u => u.type === 'stackable' ? (u.level || 0) > 0 : u.purchased).length,
       target: game.upgrades.length,
     }),
     reward: { diamonds: 25 },
