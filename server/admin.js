@@ -48,15 +48,6 @@ async function addCurrency(userId, currency, amount) {
   return { userId, currency, added: amount, newTotal: gameState[currency] };
 }
 
-// Reset user account (clear save)
-async function resetUserAccount(userId) {
-  await pool.query(
-    'UPDATE saves SET game_state = $1, updated_at = NOW() WHERE user_id = $2',
-    [{}, userId]
-  );
-  return { userId, reset: true };
-}
-
 // List all users
 async function listUsers() {
   const result = await pool.query(
@@ -69,4 +60,4 @@ async function listUsers() {
   return result.rows;
 }
 
-module.exports = { getSpeedMultiplier, setSpeedMultiplier, addCurrency, resetUserAccount, listUsers };
+module.exports = { getSpeedMultiplier, setSpeedMultiplier, addCurrency, listUsers };

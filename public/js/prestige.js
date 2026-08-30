@@ -113,7 +113,6 @@ function useElixirBoost(type) {
       break;
     case 'production':
       // 10x production for 30 seconds
-      const oldProd = game.cats.map(c => c.count * c.baseProduction);
       // We'll handle this via a temporary multiplier in recalcFPS
       game._prodBoost = true;
       setTimeout(() => {
