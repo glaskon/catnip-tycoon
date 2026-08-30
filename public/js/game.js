@@ -905,7 +905,7 @@ function buyOfflineTime(currency) {
   }
 
   const oldSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
-  game.offlineTimeMinutes += OFFLINE_STEP_MIN;
+  game.offlineTimeMinutes = Math.min(game.offlineTimeMinutes + OFFLINE_STEP_MIN, OFFLINE_MAX_MIN);
   const newSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
 
   showDebug('buyOfflineTime: +' + OFFLINE_STEP_MIN + ' min (window now ' + game.offlineTimeMinutes + ' min), paid ' + cost + ' ' + currency);
