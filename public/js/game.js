@@ -247,8 +247,9 @@ function getCatCost(catIndex) {
 // Player actions
 // ============================================================
 
-// Click the cat: add fish, animate, check achievements
-function clickCat(event) {
+// Base click value with all deterministic upgrades (no random crits).
+// Shared by clickCat() and the autoclicker so both use the same value.
+function calculateClickValue() {
   let clickValue = game.fishPerClick;
 
   // FishClick+ stackable: +1 fish/click per level
@@ -257,15 +258,22 @@ function clickCat(event) {
   // Upgrade: Golden Bowl (2x click multiplier)
   if (hasUpgrade('miska')) clickValue *= 2;
 
-  // ClickCrit: 10% chance for ×10
-  if (hasUpgrade('clickcrit') && Math.random() < 0.1) {
-    clickValue *= 10;
-  }
-
   // LuckyPaw: +0.1 fish/click per cat owned
   if (hasUpgrade('luckypaw')) {
     const totalCats = game.cats.reduce((sum, c) => sum + c.count, 0);
     clickValue += totalCats * 0.1;
+  }
+
+  return clickValue;
+}
+
+// Click the cat: add fish, animate, check achievements
+function clickCat(event) {
+  let clickValue = calculateClickValue();
+
+  // ClickCrit: 10% chance for ×10 (random — manual clicks only)
+  if (hasUpgrade('clickcrit') && Math.random() < 0.1) {
+    clickValue *= 10;
   }
 
   // Round to avoid floating point issues
@@ -567,10 +575,10 @@ function gameLoop() {
     addFish(income);
   }
 
-  // Auto-clicker upgrade: 1 click per second
+  // Auto-clicker upgrade: 1 click per second (full click value incl. upgrades)
   if (hasUpgrade('autoclicker')) {
     const clicks = 1 * delta * game.speedMultiplier;
-    addFish(game.fishPerClick * (hasUpgrade('miska') ? 2 : 1) * clicks);
+    addFish(calculateClickValue() * clicks);
   }
 
   // Tier 2 prestige: Cat Shrine generates catnip/s (scales with prestige)
