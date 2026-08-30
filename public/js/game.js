@@ -800,12 +800,11 @@ async function loadGame() {
       );
 
       if (offlineSeconds > 30) { // Only show if more than 30s offline
-        const fps = state.fishPerSecond || 0;
-        // Same formula as live generation (applyGameState already restored
-        // prestigeCount + upgrades): prestige 10+ scaling + SuperKarmnik ×4
+        // Use live-recalculated FPS and speedMultiplier instead of stale saved value
+        const fps = game.fishPerSecond;
         const catnipRate = getCatnipShrineRate();
-        const offlineFish = fps * offlineSeconds;
-        const offlineCatnip = catnipRate * offlineSeconds;
+        const offlineFish = fps * offlineSeconds * game.speedMultiplier;
+        const offlineCatnip = catnipRate * offlineSeconds * game.speedMultiplier;
 
         setTimeout(() => {
           const hours = Math.floor(offlineSeconds / 3600);
