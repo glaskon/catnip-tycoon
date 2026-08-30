@@ -273,7 +273,8 @@ function calculateClickValue() {
     clickValue += totalCats * 0.1;
   }
 
-  return clickValue;
+  // Round to 2 decimals to prevent float drift (e.g. 0.1 * 3 = 0.30000000000000004)
+  return Math.round(clickValue * 100) / 100;
 }
 
 function applyBoost(kind, mult, durationMs) {

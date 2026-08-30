@@ -7,20 +7,37 @@
 
 let bgParticles = [];
 let bgAnimationId = null;
+let _bgResizeHandler = null; // stored for cleanup
+
+// Cleanup background animation (call before re-init to avoid listener accumulation)
+function destroyBackground() {
+  if (_bgResizeHandler) {
+    window.removeEventListener('resize', _bgResizeHandler);
+    _bgResizeHandler = null;
+  }
+  if (bgAnimationId) {
+    cancelAnimationFrame(bgAnimationId);
+    bgAnimationId = null;
+  }
+  bgParticles = [];
+}
 
 // Initialize background animation
 function initBackground() {
+  // Guard against double-init (resize listener accumulation)
+  destroyBackground();
+
   const canvas = document.getElementById('bgCanvas');
   if (!canvas) return;
 
   const ctx = canvas.getContext('2d');
 
-  function resize() {
+  _bgResizeHandler = function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
+  };
+  window.addEventListener('resize', _bgResizeHandler);
+  _bgResizeHandler();
 
   // Create initial background particles
   for (let i = 0; i < 20; i++) {
@@ -251,7 +268,13 @@ function spawnParticles(x, y, amount) {
   }
   const count = Math.min(5, Math.ceil(amount / 5));
 
-  for (let i = 0; i < count; i++) {
+  // Global cap on concurrent particles to avoid DOM bloat during rapid clicking
+  const MAX_PARTICLES = 60;
+  const existing = document.querySelectorAll('.particle').length;
+  const toSpawn = Math.min(count, MAX_PARTICLES - existing);
+  if (toSpawn <= 0) return;
+
+  for (let i = 0; i < toSpawn; i++) {
     const particle = document.createElement('span');
     particle.className = 'particle';
     particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
