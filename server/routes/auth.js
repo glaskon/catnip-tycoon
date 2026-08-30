@@ -33,12 +33,15 @@ function validatePassword(password) {
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    let { email } = req.body;
 
     // Validate input
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+
+    email = String(email).trim().toLowerCase();
 
     const pwError = validatePassword(password);
     if (pwError) {
@@ -238,11 +241,14 @@ router.post('/reset-password', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    let { email } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+
+    email = String(email).trim().toLowerCase();
 
     // Find user by email
     const result = await pool.query(
