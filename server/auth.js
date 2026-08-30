@@ -1,7 +1,11 @@
 // Authentication middleware and helpers
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[Auth] JWT_SECRET env var is not set — refusing to start.');
+  process.exit(1);
+}
 
 // Generate JWT token for a user
 function generateToken(user) {
