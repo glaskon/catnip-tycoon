@@ -649,57 +649,62 @@ function buildSaveState() {
   };
 }
 
+function safeNum(v, fallback, max) {
+  max = max || 1e30;
+  return (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max) ? v : fallback;
+}
+
 function applyGameState(state) {
   if (!state || state._fresh) return false;
 
-  game.fish = state.fish || 0;
-  game.fishPerClick = state.fishPerClick || 1;
-  game.fishPerSecond = state.fishPerSecond || 0;
-  game.catnip = state.catnip || 0;
-  game.diamonds = state.diamonds || 0;
-  game.totalFishEarned = state.totalFishEarned || 0;
-  game.prestigeCount = state.prestigeCount || 0;
-  game.speedMultiplier = state.speedMultiplier || 1;
-  game.elixirs = state.elixirs || 0;
-  game.anchoredCatId = state.anchoredCatId || null;
-  game.preservedUpgradeId = state.preservedUpgradeId || null;
-  game.clickCount = state.clickCount || 0;
-  game.luckyCatnipCount = state.luckyCatnipCount || 0;
-  game.dailyClicks = state.dailyClicks || 0;
-  game.lastClickDate = state.lastClickDate || '';
-  game.totalCatsBought = state.totalCatsBought || 0;
-  game.offlineTimeMinutes = Math.min(state.offlineTimeMinutes || 60, OFFLINE_MAX_MIN);
+  game.fish = safeNum(state.fish, 0);
+  game.fishPerClick = safeNum(state.fishPerClick, 1);
+  game.fishPerSecond = safeNum(state.fishPerSecond, 0);
+  game.catnip = safeNum(state.catnip, 0);
+  game.diamonds = safeNum(state.diamonds, 0);
+  game.totalFishEarned = safeNum(state.totalFishEarned, 0);
+  game.prestigeCount = safeNum(state.prestigeCount, 0);
+  game.speedMultiplier = safeNum(state.speedMultiplier, 1);
+  game.elixirs = safeNum(state.elixirs, 0);
+  game.anchoredCatId = typeof state.anchoredCatId === 'string' ? state.anchoredCatId : null;
+  game.preservedUpgradeId = typeof state.preservedUpgradeId === 'string' ? state.preservedUpgradeId : null;
+  game.clickCount = safeNum(state.clickCount, 0);
+  game.luckyCatnipCount = safeNum(state.luckyCatnipCount, 0);
+  game.dailyClicks = safeNum(state.dailyClicks, 0);
+  game.lastClickDate = typeof state.lastClickDate === 'string' ? state.lastClickDate : '';
+  game.totalCatsBought = safeNum(state.totalCatsBought, 0);
+  game.offlineTimeMinutes = Math.min(safeNum(state.offlineTimeMinutes, 60, OFFLINE_MAX_MIN), OFFLINE_MAX_MIN);
   if (state.catlife && typeof state.catlife === 'object') {
     game.catlife = {
-      hunger: Math.max(0, Math.min(100, state.catlife.hunger ?? 100)),
-      lastUpdate: state.catlife.lastUpdate || Date.now(),
-      fedCount: state.catlife.fedCount || 0,
+      hunger: Math.min(100, safeNum(state.catlife.hunger, 100, 100)),
+      lastUpdate: safeNum(state.catlife.lastUpdate, Date.now()),
+      fedCount: safeNum(state.catlife.fedCount, 0),
     };
   }
 
   // Restore cats
-  if (state.cats) {
-    for (const savedCat of state.cats) {
-      const cat = game.cats.find(c => c.id === savedCat.id);
-      if (cat) cat.count = savedCat.count || 0;
-    }
+  const savedCats = Array.isArray(state.cats) ? state.cats : [];
+  for (const savedCat of savedCats) {
+    if (!savedCat || typeof savedCat.id !== 'string') continue;
+    const cat = game.cats.find(c => c.id === savedCat.id);
+    if (cat) cat.count = safeNum(savedCat.count, 0);
   }
 
   // Restore upgrades and reapply effects
-  if (state.upgrades) {
-    for (const savedUpg of state.upgrades) {
-      const upg = game.upgrades.find(u => u.id === savedUpg.id);
-      if (!upg) continue;
+  const savedUpgrades = Array.isArray(state.upgrades) ? state.upgrades : [];
+  for (const savedUpg of savedUpgrades) {
+    if (!savedUpg || typeof savedUpg.id !== 'string') continue;
+    const upg = game.upgrades.find(u => u.id === savedUpg.id);
+    if (!upg) continue;
 
-      if (savedUpg.purchased && upg.type === 'once') {
-        upg.purchased = true;
-        applyUpgradeEffect(upg.id);
-      }
+    if (savedUpg.purchased === true && upg.type === 'once') {
+      upg.purchased = true;
+      applyUpgradeEffect(upg.id);
+    }
 
-      if (savedUpg.level && upg.type === 'stackable') {
-        upg.level = savedUpg.level;
-        applyUpgradeEffect(upg.id);
-      }
+    if (upg.type === 'stackable') {
+      upg.level = safeNum(savedUpg.level, 0, 10000);
+      if (upg.level > 0) applyUpgradeEffect(upg.id);
     }
   }
 
@@ -714,24 +719,28 @@ function applyGameState(state) {
   }
 
   // Restore achievements from save (without re-awarding rewards)
-  if (state.achievements && Array.isArray(state.achievements)) {
-    for (const achId of state.achievements) {
-      const ach = ACHIEVEMENTS.find(a => a.id === achId);
-      if (ach) ach.earned = true;
+  const savedAchievements = Array.isArray(state.achievements) ? state.achievements : [];
+  const validAchievements = [];
+  for (const achId of savedAchievements) {
+    if (typeof achId !== 'string') continue;
+    const ach = ACHIEVEMENTS.find(a => a.id === achId);
+    if (ach) {
+      ach.earned = true;
+      validAchievements.push(achId);
     }
+  }
+  if (validAchievements.length > 0) {
     // Sync to localStorage too
-    localStorage.setItem('catnip-achievements', JSON.stringify(state.achievements));
+    localStorage.setItem('catnip-achievements', JSON.stringify(validAchievements));
   }
 
   // Restore shop purchased items
-  if (state.purchasedItems && Array.isArray(state.purchasedItems)) {
-    window.purchasedItems = state.purchasedItems;
-    localStorage.setItem('catnip-purchased', JSON.stringify(state.purchasedItems));
-  }
-  if (state.shopCounts && typeof state.shopCounts === 'object') {
-    window.shopCounts = state.shopCounts;
-    localStorage.setItem('catnip-shopcounts', JSON.stringify(state.shopCounts));
-  }
+  const savedPurchasedItems = Array.isArray(state.purchasedItems) ? state.purchasedItems : [];
+  window.purchasedItems = savedPurchasedItems;
+  localStorage.setItem('catnip-purchased', JSON.stringify(savedPurchasedItems));
+  const savedShopCounts = (state.shopCounts && typeof state.shopCounts === 'object' && !Array.isArray(state.shopCounts)) ? state.shopCounts : {};
+  window.shopCounts = savedShopCounts;
+  localStorage.setItem('catnip-shopcounts', JSON.stringify(savedShopCounts));
 
   recalcFPS();
   render();
