@@ -66,6 +66,8 @@ async function initDB() {
 
       -- Index on token for fast lookups
       CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
+       -- Token invalidation versioning for JWTs (bumped on password reset)
+       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT DEFAULT 0;
 
       -- Insert default admin config if not exists
       INSERT INTO admin_config (speed_multiplier)

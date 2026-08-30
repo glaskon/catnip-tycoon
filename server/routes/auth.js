@@ -226,6 +226,9 @@ router.post('/reset-password', async (req, res) => {
       [reset.user_id, reset.id]
     );
 
+    // Bump token version to invalidate existing JWTs
+    await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [reset.user_id]);
+
     res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
   } catch (err) {
     console.error('[Auth] Reset password error:', err.message);
@@ -252,7 +255,7 @@ router.post('/login', async (req, res) => {
 
     // Find user by email
     const result = await pool.query(
-      'SELECT id, email, password_hash, is_admin FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, is_admin, token_version FROM users WHERE email = $1',
       [email]
     );
     if (result.rows.length === 0) {
