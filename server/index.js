@@ -3,6 +3,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Import database and routes
@@ -16,8 +17,29 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 // --- Middleware ---
+app.set('trust proxy', 1);               // Behind Coolify proxy — real client IP from X-Forwarded-For
 app.use(cors());                      // Allow cross-origin requests from game client
 app.use(express.json());              // Parse JSON request bodies
+
+// --- Rate limiting ---
+// General API: 600 req / 15 min / IP (save polls, leaderboard, static API)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down' },
+});
+// Auth endpoints: 20 req / 15 min / IP (brute-force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, try again later' },
+});
+app.use('/api/', apiLimiter);
+app.use('/api/auth', authLimiter);
 
 // --- Static file serving ---
 // Serve all frontend assets (index.html, CSS, JS, locales, images, etc.)
