@@ -27,7 +27,7 @@ router.post('/speed', async (req, res) => {
     if (multiplier === undefined || multiplier === null) {
       return res.status(400).json({ error: 'multiplier is required' });
     }
-    if (typeof multiplier !== 'number' || multiplier <= 0) {
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
       return res.status(400).json({ error: 'multiplier must be a positive number' });
     }
 
@@ -50,6 +50,10 @@ router.post('/currency', async (req, res) => {
 
     if (!user_id || !currency || amount === undefined) {
       return res.status(400).json({ error: 'user_id, currency, and amount are required' });
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
     }
 
     const result = await addCurrency(user_id, currency, amount);
