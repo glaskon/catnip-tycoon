@@ -40,7 +40,7 @@ function createTransport() {
       pass: pass,
     },
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: true,
     },
   });
 }
