@@ -8,6 +8,9 @@ const { pool } = require('../db');
 const { generateToken, authMiddleware } = require('../auth');
 const { sendEmail } = require('../email');
 
+// --- Timing-safe dummy hash for login failures (computed once at startup) ---
+const DUMMY_HASH = bcrypt.hashSync('timing-equalizer', 10);
+
 // --- Password validation ---
 function validatePassword(password) {
   if (!password || password.length < 8) {
@@ -247,6 +250,8 @@ router.post('/login', async (req, res) => {
       [email]
     );
     if (result.rows.length === 0) {
+      // Constant-time path: run a dummy bcrypt compare to match existing-account timing
+      await bcrypt.compare(password, DUMMY_HASH);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
