@@ -35,10 +35,36 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Validation: reject arbitrary/malicious game state from the client ---
+const MAX_DEPTH = 4;
+const MAX_ARRAY_LEN = 1000;
+const MAX_STR_LEN = 200;
+const MAX_KEYS = 200;
+const MAX_NUM = 1e30;
+
+function isValidStateValue(v, depth) {
+  if (depth > MAX_DEPTH) return false;
+  if (v === null) return true;
+  const t = typeof v;
+  if (t === 'number') return Number.isFinite(v) && v >= 0 && v <= MAX_NUM;
+  if (t === 'boolean') return true;
+  if (t === 'string') return v.length <= MAX_STR_LEN;
+  if (Array.isArray(v)) {
+    return v.length <= MAX_ARRAY_LEN && v.every(x => isValidStateValue(x, depth + 1));
+  }
+  if (t === 'object') {
+    const keys = Object.keys(v);
+    return keys.length <= MAX_KEYS &&
+      keys.every(k => k.length > 0 && k.length <= 100) &&
+      keys.every(k => isValidStateValue(v[k], depth + 1));
+  }
+  return false;
+}
+
 /**
  * POST /api/save
  * Save/update the current user's game state in the database.
- * Body: { game_state: { ... } }
+ * Body: { game_state: { ... } } — validated (types, ranges, size).
  * Requires valid JWT.
  */
 router.post('/', authMiddleware, async (req, res) => {
@@ -47,6 +73,9 @@ router.post('/', authMiddleware, async (req, res) => {
 
     if (!game_state || typeof game_state !== 'object') {
       return res.status(400).json({ error: 'game_state object is required' });
+    }
+    if (!isValidStateValue(game_state, 0)) {
+      return res.status(400).json({ error: 'Invalid game_state' });
     }
 
     // Upsert: check if save row exists, then insert or update
