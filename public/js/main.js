@@ -44,6 +44,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // applyGameState() updated the window.purchasedItems / window.shopCounts
+  // mirrors from the server — resync shop.js module vars so subsequent
+  // purchases (and server saves) start from the server state.
+  if (Array.isArray(window.purchasedItems)) purchasedItems = window.purchasedItems;
+  if (window.shopCounts && typeof window.shopCounts === 'object') shopCounts = window.shopCounts;
+
   // Mark game ready so the loop can tick (guests are ready immediately;
   // logged-in users become ready only after loadGame finishes above)
   game.isReady = true;
@@ -223,6 +229,10 @@ async function handleAuth(e) {
 
     // Load game state from server
     await loadGame();
+
+    // Resync shop module vars from the server-loaded window mirrors
+    if (Array.isArray(window.purchasedItems)) purchasedItems = window.purchasedItems;
+    if (window.shopCounts && typeof window.shopCounts === 'object') shopCounts = window.shopCounts;
 
     // Show admin button if admin
     updateAdminVisibility();

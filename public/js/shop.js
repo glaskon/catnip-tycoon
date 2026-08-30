@@ -121,6 +121,11 @@ function loadPurchasedItems() {
 function savePurchasedItems() {
   localStorage.setItem('catnip-purchased', JSON.stringify(purchasedItems));
   localStorage.setItem('catnip-shopcounts', JSON.stringify(shopCounts));
+  // Keep the window mirror fresh — game.js buildSaveState() reads
+  // window.purchasedItems / window.shopCounts, so purchases must be
+  // included in the server save.
+  window.purchasedItems = purchasedItems;
+  window.shopCounts = shopCounts;
 }
 
 // Last purchased item with the given id prefix wins (purchases array is
