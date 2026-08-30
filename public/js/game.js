@@ -315,9 +315,13 @@ function canAfford(cost, currency) {
 function clickCat(event) {
   let clickValue = calculateClickValue();
 
+  sound.click();
+
   // ClickCrit: 10% chance for ×10 (random — manual clicks only)
   if (hasUpgrade('clickcrit') && Math.random() < 0.1) {
     clickValue *= 10;
+    sound.crit();
+    screenShake();
   }
 
   // Round to avoid floating point issues
@@ -346,6 +350,8 @@ function clickCat(event) {
     if (Math.random() < catnipDropRate) {
       game.catnip += 25;
       game.luckyCatnipCount = (game.luckyCatnipCount || 0) + 1;
+      sound.lucky();
+      luckyFlash();
       if (typeof showToast === 'function') {
         showToast('🍀 ' + i18n.t('toasts.luckyCatnip', 'Lucky Catnip! +25🌿'));
       }
@@ -364,6 +370,8 @@ function clickCat(event) {
   }
   if (Math.random() < diamondDropRate) {
     game.diamonds += 1;
+    sound.lucky();
+    luckyFlash();
   }
 
   // Bounce animation on cat canvas
@@ -406,6 +414,7 @@ function buyCat(index) {
   cat.count++;
   game.totalCatsBought++;
   showDebug('buyCat: BOUGHT! ' + cat.id + ' #' + cat.count);
+  sound.buy();
 
   if (currency === 'catnip') {
     game.catnip -= cost;
@@ -450,6 +459,7 @@ function buyUpgrade(index) {
   // Apply upgrade effect
   applyUpgradeEffect(upg.id);
 
+  sound.buy();
   recalcFPS();
   if (typeof checkAchievements === 'function') checkAchievements();
   render();

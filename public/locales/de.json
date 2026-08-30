@@ -256,5 +256,6 @@
   "daily.claim": "Einlösen",
   "daily.claimed": "Eingelöst! Bis morgen",
   "daily.claimedToast": "Tägliche Belohnung: ",
-  "daily.desc": "Komm jeden Tag zurück, um Belohnungen zu erhalten. Verpasse einen Tag und die Serie setzt zurück. Der Zyklus wiederholt sich nach Tag 7."
+  "daily.desc": "Komm jeden Tag zurück, um Belohnungen zu erhalten. Verpasse einen Tag und die Serie setzt zurück. Der Zyklus wiederholt sich nach Tag 7.",
+  "app.soundOn": "Ton an"
 }

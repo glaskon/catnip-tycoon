@@ -256,5 +256,6 @@
   "daily.claim": "Claim",
   "daily.claimed": "Claimed! See you tomorrow",
   "daily.claimedToast": "Daily reward: ",
-  "daily.desc": "Come back every day to claim rewards. Miss a day and the streak resets. The cycle repeats after day 7."
+  "daily.desc": "Come back every day to claim rewards. Miss a day and the streak resets. The cycle repeats after day 7.",
+  "app.soundOn": "Sound on"
 }

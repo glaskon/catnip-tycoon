@@ -256,5 +256,6 @@
   "daily.claim": "Reclamar",
   "daily.claimed": "¡Reclamado! Vuelve mañana",
   "daily.claimedToast": "Recompensa diaria: ",
-  "daily.desc": "Vuelve cada día para reclamar recompensas. Si te saltas un día, la racha se reinicia. El ciclo se repite tras el día 7."
+  "daily.desc": "Vuelve cada día para reclamar recompensas. Si te saltas un día, la racha se reinicia. El ciclo se repite tras el día 7.",
+  "app.soundOn": "Sonido activado"
 }

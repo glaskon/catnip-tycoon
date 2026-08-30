@@ -91,6 +91,13 @@ function initUI() {
   // Auth modal triggers
   document.getElementById('btnAuth').addEventListener('click', openAuthModal);
 
+  // Sound toggle
+  const btnSound = document.getElementById('btnSound');
+  if (btnSound) {
+    updateSoundToggle();
+    btnSound.addEventListener('click', () => sound.toggle());
+  }
+
   // Close modals on backdrop click
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', (e) => {
@@ -350,6 +357,17 @@ async function handleAdminListUsers() {
 }
 
 // ============================================================
+// Sound toggle
+// ============================================================
+
+function updateSoundToggle() {
+  const btn = document.getElementById('btnSound');
+  if (!btn) return;
+  btn.textContent = sound.enabled ? '🔊' : '🔇';
+  btn.title = i18n.t('app.soundOn', 'Sound on') + (sound.enabled ? '' : ' / off');
+}
+
+// ============================================================
 // Toast notification
 // ============================================================
 
@@ -386,3 +404,4 @@ window.handleAdminSetSpeed = handleAdminSetSpeed;
 window.handleAdminAddCurrency = handleAdminAddCurrency;
 window.handleAdminListUsers = handleAdminListUsers;
 window.showToast = showToast;
+window.updateSoundToggle = updateSoundToggle;

@@ -226,6 +226,38 @@ html, body {
   border-color: var(--success);
 }
 
+/* --- Juiciness: screen shake on critical hits --- */
+@keyframes screenShakeAnim {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(4px, -3px); }
+  60% { transform: translate(-3px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+
+#app.screen-shake {
+  animation: screenShakeAnim 0.3s ease;
+}
+
+/* --- Juiciness: golden flash on rare drops (lucky catnip, diamond) --- */
+#luckyFlash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(241, 196, 15, 0.35) 0%, rgba(241, 196, 15, 0) 70%);
+}
+
+#luckyFlash.flash {
+  animation: luckyFlashAnim 0.7s ease-out;
+}
+
+@keyframes luckyFlashAnim {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* --- Panel Container --- */
 #panelContainer {
   flex: 1;

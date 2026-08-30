@@ -25,6 +25,7 @@
         <span class="res-item" title="Catnip">🌿 <span id="resCatnip">0</span></span>
         <span class="res-item" title="Diamonds">💎 <span id="resDiamonds">0</span></span>
       </div>
+      <button id="btnSound" class="btn btn-sm" title="Sound">🔊</button>
       <button id="btnAuth" class="btn btn-sm">Login / Register</button>
     </header>
 
@@ -157,6 +158,9 @@
   <!-- Achievement Unlock Toast -->
   <div id="achievementToast" class="toast">🏆 Achievement Unlocked!</div>
 
+  <!-- Golden flash overlay (rare drops: lucky catnip, diamond) -->
+  <div id="luckyFlash"></div>
+
   <!-- Debug overlay for development -->
   <div id="debugOverlay" style="position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:#0f0;font:11px monospace;padding:4px 8px;max-height:60px;overflow-y:auto;z-index:9999;display:none;pointer-events:none;"></div>
   <script>
@@ -189,6 +193,7 @@
   <!-- ===== Scripts (vanilla JS, no frameworks) ===== -->
   <script src="/js/constants.js"></script>
   <script src="/js/escape.js"></script>
+  <script src="/js/sound.js"></script>
   <script src="/js/i18n.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/game.js"></script>

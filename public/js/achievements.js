@@ -298,6 +298,7 @@ function checkAchievements() {
       // Show toast notification
       const name = i18n.t(ach.nameKey, ach.id);
       showToast(`🏆 ${name}`);
+      sound.achievement();
     }
   }
 

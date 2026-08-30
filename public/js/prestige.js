@@ -351,6 +351,8 @@ function armPrestige() {
 function performPrestige() {
   if (prestige()) {
     showToast(i18n.t('prestige.completeToast', '✨ Prestige complete!'));
+    sound.prestige();
+    luckyFlash();
     renderPrestigePanel();
     saveGame();
   }
