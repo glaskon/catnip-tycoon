@@ -42,7 +42,7 @@ router.post('/speed', async (req, res) => {
 /**
  * POST /api/admin/currency
  * Add currency to a specific user's save.
- * Body: { user_id: number, currency: 'fish'|'catnip'|'diamond', amount: number }
+ * Body: { user_id: number, currency: 'fish'|'catnip'|'diamonds', amount: number }
  */
 router.post('/currency', async (req, res) => {
   try {

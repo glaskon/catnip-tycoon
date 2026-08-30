@@ -888,10 +888,7 @@ function startGameLoops() {
 }
 
 // --- Offline time purchase (zmiana: +30 min increments, 6h cap) ---
-const OFFLINE_STEP_MIN = 30;
-const OFFLINE_MAX_MIN = 360; // 6h cap
-const OFFLINE_COST_CATNIP = 15;
-const OFFLINE_COST_DIAMOND = 8;
+// Constants defined in /js/constants.js (loaded before this file)
 
 // Offline earnings context — kept so buying more time can retroactively
 // top up earnings for the extra window (if the player was away longer)
@@ -1003,7 +1000,7 @@ function showOfflineEarnings(timeAway, awaySeconds, fps, catnipRate) {
       <p style="font-size: 0.75rem; color: var(--text-muted);" id="offlineWindowInfo"></p>
       <div id="offlineBuyRow" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">
         <button class="btn btn-sm" id="offlineBuyCatnip" onclick="buyOfflineTime('catnip')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_CATNIP}🌿)</button>
-        <button class="btn btn-sm" id="offlineBuyDiamond" onclick="buyOfflineTime('diamond')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_DIAMOND}💎)</button>
+        <button class="btn btn-sm" id="offlineBuyDiamond" onclick="buyOfflineTime('diamonds')">⏱️ ${i18n.t('offline.buy30')} (${OFFLINE_COST_DIAMOND}💎)</button>
       </div>
       <button class="btn btn-primary" onclick="document.getElementById('offlinePopup').remove()" style="margin-top: 8px;">${i18n.t('offline.collect', 'Collect')}</button>
     </div>

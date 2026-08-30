@@ -276,7 +276,7 @@ function renderAdminPanel() {
       <select id="adminCurrencyType">
         <option value="fish">🐟 Fish</option>
         <option value="catnip">🌿 Catnip</option>
-        <option value="diamond">💎 Diamonds</option>
+        <option value="diamonds">💎 Diamonds</option>
       </select>
       <label>${i18n.t('admin.currencyAmount')}:</label>
       <input type="number" id="adminCurrencyAmount" value="1000">

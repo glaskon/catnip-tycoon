@@ -6,7 +6,7 @@ let _lbLoaded = false;
 let _lbFetching = false;
 let _lbLastFetch = 0;
 let _lbAbort = null; // AbortController for in-flight fetch
-const LB_FETCH_INTERVAL = 30000; // refetch at most once per 30s
+// LB_FETCH_INTERVAL defined in /js/constants.js
 
 // Abort any in-flight leaderboard fetch (call when switching away from panel)
 function abortLeaderboardFetch() {
@@ -63,7 +63,7 @@ function renderLeaderboard() {
         html += `<div class="card" style="display: flex; align-items: center; gap: 12px; padding: 10px 14px;">`;
         html += `<span style="font-size: 1.1rem; min-width: 32px; text-align: center;">${medal}</span>`;
         html += `<div style="flex: 1;">`;
-        html += `<div style="font-size: 0.85rem; color: var(--text);">${entry.email}</div>`;
+        html += `<div style="font-size: 0.85rem; color: var(--text);">${escapeHtml(entry.email)}</div>`;
         html += `<div style="font-size: 0.75rem; color: var(--text-secondary);">`;
         html += `🐟 ${formatNumber(entry.totalFishEarned)} | ✨ ${entry.prestige} prestige | ⚡ ${formatNumber(entry.fps)}/s`;
         html += `</div>`;

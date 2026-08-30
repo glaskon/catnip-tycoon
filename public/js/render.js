@@ -269,7 +269,6 @@ function spawnParticles(x, y, amount) {
   const count = Math.min(5, Math.ceil(amount / 5));
 
   // Global cap on concurrent particles to avoid DOM bloat during rapid clicking
-  const MAX_PARTICLES = 60;
   const existing = document.querySelectorAll('.particle').length;
   const toSpawn = Math.min(count, MAX_PARTICLES - existing);
   if (toSpawn <= 0) return;
@@ -290,7 +289,7 @@ function spawnParticles(x, y, amount) {
       if (particle.parentNode) {
         particle.parentNode.removeChild(particle);
       }
-    }, 800);
+    }, PARTICLE_LIFE_MS);
   }
 }
 

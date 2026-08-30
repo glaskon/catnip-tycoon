@@ -21,7 +21,7 @@ async function setSpeedMultiplier(multiplier) {
 // Add currency to a user's save
 async function addCurrency(userId, currency, amount) {
   // Validate currency type
-  const validCurrencies = ['fish', 'catnip', 'diamond'];
+  const validCurrencies = ['fish', 'catnip', 'diamonds'];
   if (!validCurrencies.includes(currency)) {
     throw new Error(`Invalid currency: ${currency}. Must be one of: ${validCurrencies.join(', ')}`);
   }
