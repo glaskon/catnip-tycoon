@@ -104,6 +104,7 @@ function equipAlbumSkin(month) {
 
 function albumRewardHTML(month, owned) {
   const palette = albumSkinPalette(albumSkinId(month));
+  if (!palette) return '';
   return `<span class="album-swatch" style="background:${palette.fur}" aria-hidden="true">🐈</span>
     ${albumSkinName(month)}${owned ? ` <button class="btn btn-secondary btn-sm" onclick="equipAlbumSkin('${month}')">${i18n.t('album.equip')}</button>` : ''}`;
 }

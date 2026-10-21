@@ -206,3 +206,44 @@ test('history is visible and earned skins actually reach the canvas after restor
   clone.endStateTransition();
   assert.equal(colors[0], clone.albumSkinPalette('skin_album_2026-10').fur);
 });
+
+test('album rewards omit unknown palettes and preserve dated skin colors and equip buttons', () => {
+  const c = setup();
+  for (const month of ['unknown', '2026-00', '2026-13', '']) {
+    for (const owned of [false, true]) {
+      assert.equal(c.albumRewardHTML(month, owned), '');
+    }
+  }
+  for (let month = 1; month <= 12; month++) {
+    const date = `2026-${String(month).padStart(2, '0')}`;
+    const hue = ((2026 * 12 + month) * 137.508) % 360;
+    const html = c.albumRewardHTML(date, false);
+    assert.ok(html.includes(`background:hsl(${hue}, 65%, 70%)`));
+    assert.ok(html.includes(`Moon Cat · ${date}`));
+    assert.doesNotMatch(html, /equipAlbumSkin/);
+    assert.ok(c.albumRewardHTML(date, true).includes(`equipAlbumSkin('${date}')`));
+  }
+});
+
+test('album renders valid and atypical current months and history without losing valid rewards', () => {
+  const c = setup();
+  earn(c);
+  visit(c, '2026-11-01T12:00:00Z');
+  const panel = { innerHTML: '' }, summary = { innerHTML: '' };
+  c.document.getElementById = id => id === 'albumContent' ? panel : id === 'albumSummary' ? summary : null;
+  for (const month of ['2026-11', 'unknown']) {
+    c.game.album.month = month;
+    for (const history of [{ '2026-10': 10 }, { '2026-10': 10, unknown: 2, '2026-13': 3 }]) {
+      c.game.album.history = history;
+      assert.doesNotThrow(() => c.renderAlbum());
+      assert.match(summary.innerHTML, /1\/10/);
+      assert.match(panel.innerHTML, /2026-10 · 10\/10 · album.earned/);
+      assert.match(panel.innerHTML, /equipAlbumSkin\('2026-10'\)/);
+      if ('unknown' in history) {
+        assert.match(panel.innerHTML, /unknown · 2\/10 · album.missed/);
+        assert.match(panel.innerHTML, /2026-13 · 3\/10 · album.missed/);
+        assert.doesNotMatch(panel.innerHTML, /equipAlbumSkin\('(unknown|2026-13)'\)/);
+      }
+    }
+  }
+});
