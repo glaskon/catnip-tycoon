@@ -551,7 +551,7 @@ function prestige() {
   const oldAnchoredCatId = game.anchoredCatId;
   const oldPreservedUpgradeId = game.preservedUpgradeId;
 
-  // Tier 7 (50+): cashback — 10% of total fish earned returns as catnip bonus
+  // Tier 7 (50+): cashback — 1 catnip per full 1000 fish earned this run
   let cashbackCatnip = 0;
   if (game.prestigeCount >= 50) {
     cashbackCatnip = Math.floor(game.totalFishEarned * 0.1 / 100);

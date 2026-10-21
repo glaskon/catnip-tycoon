@@ -4,7 +4,7 @@
 const GACHA_SINGLE_COST = 50;   // catnip per single pull
 const GACHA_MULTI_PULLS = 5;
 const GACHA_MULTI_COST = 225;   // 10% off (250 -> 225)
-const GACHA_PITY = 10;          // guaranteed Rare+ every 10 pulls
+const GACHA_PITY = 10;          // Rare+ after at most 9 consecutive common pulls
 
 // Open rates (percent) — displayed in the UI
 const GACHA_RATES = { common: 70, rare: 25, epic: 4.5, legendary: 0.5 };
@@ -159,7 +159,7 @@ function renderGacha() {
   html += `<span class="gacha-rate gacha-rate-legendary">${i18n.t('gacha.rarity.legendary', 'Legendary')} ${GACHA_RATES.legendary}%</span>`;
   html += `</div>`;
   html += `<p style="text-align: center; font-size: 0.75rem; color: var(--text-secondary);">`;
-  html += `${i18n.t('gacha.pityLabel', 'Pity')}: <b>${g.pity}/${GACHA_PITY}</b> — ${i18n.t('gacha.pityDesc', 'guaranteed Rare+ every 10 pulls')}`;
+  html += `${i18n.t('gacha.pityLabel', 'Pity')}: <b>${g.pity}/${GACHA_PITY}</b> — ${i18n.t('gacha.pityDesc', 'after at most 9 consecutive results without Rare+, the next pull is guaranteed Rare+')}`;
   html += `</p>`;
 
   // Reveal area

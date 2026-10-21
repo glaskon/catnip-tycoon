@@ -229,7 +229,7 @@ function renderPrestigePanel() {
   if (game.prestigeCount >= 10) {
     html += `<div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border: 1px solid #a855f7; border-radius: var(--border-radius);">`;
     html += `<h3 style="color: #a855f7; margin-bottom: 8px;">${i18n.t('prestige.alchemy', '🧪 Alchemy — Elixirs')}</h3>`;
-    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">${i18n.t('prestige.elixirsHave', 'You have {n} elixirs ({rate}/min)')
+    html += `<p style="font-size: 0.8rem; color: var(--text-secondary);">${i18n.t('prestige.elixirsHave', 'You have {n} elixirs ({rate}/s)')
       .replace('{n}', `<b style="color: #a855f7;"><span id="prestigeElixirVal">${formatNumber(elixirFloor)}</span></b>`)
       .replace('{rate}', formatNumber(ELIXIR_RATE_PER_PRESTIGE * (game.prestigeCount - 9)))}</p>`;
     html += `<div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">`;
