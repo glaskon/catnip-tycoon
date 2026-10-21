@@ -79,20 +79,20 @@ const SHOP_ITEMS = [
     name: '+30min Offline (catnip)',
     icon: '⏰',
     desc: 'Extends offline earnings by 30 min',
-    baseCost: 15,
+    baseCost: OFFLINE_COST_CATNIP,
     currency: 'catnip',
     type: 'stackable',
-    costGrowth: 2,
+    costGrowth: 1,
   },
   {
     id: 'offline_diamond',
     name: '+30min Offline (diamonds)',
     icon: '⏰',
     desc: 'Extends offline earnings by 30 min',
-    baseCost: 15,
+    baseCost: OFFLINE_COST_DIAMOND,
     currency: 'diamonds',
     type: 'stackable',
-    costGrowth: 2,
+    costGrowth: 1,
   },
 ];
 
@@ -154,6 +154,11 @@ function isItemStackable(item) {
   return item.type === 'stackable';
 }
 
+function isShopItemMaxed(item) {
+  return (item.id === 'offline_catnip' || item.id === 'offline_diamond') &&
+    game.offlineTimeMinutes >= OFFLINE_MAX_MIN;
+}
+
 // Get the count of a stackable item purchased
 function getShopItemCount(itemId) {
   return shopCounts[itemId] || 0;
@@ -174,7 +179,7 @@ function renderShop() {
     const owned = !isItemStackable(item) && hasItem(item.id);
     const count = getShopItemCount(item.id);
     const cost = getShopItemCost(item);
-    const afford = canAfford(cost, item.currency);
+    const afford = canAfford(cost, item.currency) && !isShopItemMaxed(item);
     sig += '|' + (owned ? 1 : 0) + ':' + count + ':' + (afford ? 1 : 0);
   }
   sig += '|' + Math.floor(game.diamonds);
@@ -187,7 +192,7 @@ function renderShop() {
     const owned = !isItemStackable(item) && hasItem(item.id);
     const currencyIcon = item.currency === 'diamonds' ? '💎' : item.currency === 'catnip' ? '🌿' : '🐟';
     const cost = getShopItemCost(item);
-    const canAfford = window.canAfford(cost, item.currency);
+    const canAfford = window.canAfford(cost, item.currency) && !isShopItemMaxed(item);
 
     html += `<div class="shop-item">`;
     html += `<span class="shop-item-icon">${item.icon}</span>`;
@@ -239,6 +244,7 @@ function renderShop() {
 function buyShopItem(itemId) {
   const item = SHOP_ITEMS.find(i => i.id === itemId);
   if (!item) return;
+  if (isShopItemMaxed(item)) return;
 
   const cost = getShopItemCost(item);
 
@@ -282,7 +288,7 @@ function applyShopItem(itemId) {
       break;
     case 'offline_catnip':
     case 'offline_diamond':
-      game.offlineTimeMinutes = Math.min(game.offlineTimeMinutes + 30, OFFLINE_MAX_MIN);
+      game.offlineTimeMinutes = Math.min(game.offlineTimeMinutes + OFFLINE_STEP_MIN, OFFLINE_MAX_MIN);
       showToast(i18n.t('shop.timeExtended', '⏰ Offline time extended to {m} min').replace('{m}', String(game.offlineTimeMinutes)));
       break;
     case 'effect_sparkle':
