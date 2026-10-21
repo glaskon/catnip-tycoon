@@ -283,6 +283,8 @@ function calculateClickValue() {
   return Math.round(clickValue * 100) / 100;
 }
 
+const BOOST_MAX_DURATION_MS = 5 * 60 * 1000;
+
 function applyBoost(kind, mult, durationMs) {
   game.activeBoosts.push({ kind: kind, mult: mult, expiresAt: Date.now() + durationMs });
   recomputeBoostedValues();
@@ -293,12 +295,29 @@ function recomputeBoostedValues() {
   const before = game.activeBoosts.length;
   game.activeBoosts = game.activeBoosts.filter(b => b.expiresAt > now);
   if (game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
+  // Merge repeated activations and legacy saves: strongest multiplier wins,
+  // remaining durations add up, with at most five minutes per kind.
+  const boosts = [];
+  for (const b of game.activeBoosts) {
+    if (!['speed', 'click', 'production'].includes(b.kind) ||
+        !Number.isFinite(b.mult) || b.mult <= 0 || b.mult > 1000 ||
+        !Number.isFinite(b.expiresAt)) continue;
+    const existing = boosts.find(boost => boost.kind === b.kind);
+    const remainingMs = b.expiresAt - now;
+    if (existing) {
+      existing.mult = Math.max(existing.mult, b.mult);
+      existing.expiresAt = now + Math.min(BOOST_MAX_DURATION_MS, existing.expiresAt - now + remainingMs);
+    } else {
+      boosts.push({ kind: b.kind, mult: b.mult, expiresAt: now + Math.min(BOOST_MAX_DURATION_MS, remainingMs) });
+    }
+  }
+  game.activeBoosts = boosts;
   const prevPP = game.productionMultiplier;
   let sp = 1, cp = 1, pp = 1;
   for (const b of game.activeBoosts) {
-    if (b.kind === 'speed') sp *= b.mult;
-    else if (b.kind === 'click') cp *= b.mult;
-    else if (b.kind === 'production') pp *= b.mult;
+    if (b.kind === 'speed') sp = b.mult;
+    else if (b.kind === 'click') cp = b.mult;
+    else if (b.kind === 'production') pp = b.mult;
   }
   game.speedMultiplier = sp;
   game.fishPerClick = game.baseFishPerClick * cp;
@@ -830,7 +849,7 @@ function applyGameState(state) {
   window.shopCounts = savedShopCounts;
   localStorage.setItem('catnip-shopcounts', JSON.stringify(savedShopCounts));
 
-  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && typeof b.mult === 'number' && b.mult > 0 && typeof b.remainingMs === 'number' && b.remainingMs > 0).map(b => ({ kind: ['speed','click','production'].indexOf(b.kind) >= 0 ? b.kind : 'speed', mult: b.mult, expiresAt: Date.now() + b.remainingMs }));
+  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: Date.now() + Math.min(b.remainingMs, BOOST_MAX_DURATION_MS) }));
   recomputeBoostedValues();
 
   recalcFPS();
