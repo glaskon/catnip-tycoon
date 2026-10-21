@@ -1,4 +1,8 @@
 {
+  "game.saveStatus.idle": "Aún sin guardar",
+  "game.saveStatus.pending": "Guardando…",
+  "game.saveStatus.saved": "Guardado",
+  "game.saveStatus.error": "Error al guardar",
   "app.title": "Catnip Tycoon",
   "app.loading": "Cargando...",
   "app.login": "Iniciar sesión / Registrarse",

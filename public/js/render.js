@@ -534,6 +534,7 @@ function renderUpgrades() {
 // Main render function - updates all visible UI
 function render() {
   updateStats();
+  renderSaveStatus();
 
   // Only render the currently active panel for performance
   const activePanel = document.querySelector('.panel.active');

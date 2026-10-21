@@ -89,6 +89,15 @@ html, body {
   gap: 8px;
 }
 
+#saveStatus {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+#saveStatus[data-status="saved"] { color: var(--success); }
+#saveStatus[data-status="pending"] { color: var(--gold); }
+#saveStatus[data-status="error"] { color: var(--danger); font-weight: bold; }
+
 #userStatus {
   font-size: 0.8rem;
   color: var(--text-secondary);

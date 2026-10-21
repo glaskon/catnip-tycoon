@@ -667,6 +667,22 @@ function gameLoop() {
 
 // Save game state to server (and always to localStorage)
 const SAVE_KEY = 'catnip-save';
+// UI-only status; it is not part of the persisted game state.
+let _saveStatus = 'idle';
+let _saveAttempt = 0;
+
+function renderSaveStatus() {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  const text = i18n.t('game.saveStatus.' + _saveStatus);
+  if (el.textContent !== text) el.textContent = text;
+  el.dataset.status = _saveStatus;
+}
+
+function setSaveStatus(status) {
+  _saveStatus = status;
+  renderSaveStatus();
+}
 
 function buildSaveState() {
   return {
@@ -824,22 +840,29 @@ function applyGameState(state) {
 
 // Save to both localStorage (always) and server (if logged in)
 async function saveGame() {
-  const state = buildSaveState();
-
-  // Always save to localStorage — guest mode and server backup
+  const attempt = ++_saveAttempt;
+  setSaveStatus('pending');
+  let failed = false;
+  let state;
   try {
+    state = buildSaveState();
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   } catch (e) {
+    failed = true;
     console.error('[Game] LocalStorage save failed:', e.message);
   }
 
   // Then try server if logged in
-  if (!api.token) return;
-  try {
-    await api.saveGameState(state);
-  } catch (err) {
-    console.error('[Game] Server save failed:', err.message);
+  if (api.token && state) {
+    try {
+      await api.saveGameState(state);
+    } catch (err) {
+      failed = true;
+      console.error('[Game] Server save failed:', err.message);
+    }
   }
+  // An older request must not overwrite the latest attempt's status.
+  if (attempt === _saveAttempt) setSaveStatus(failed ? 'error' : 'saved');
 }
 
 // Load game state from localStorage (guest mode / instant restore)
