@@ -35,6 +35,10 @@ function isDailyClaimedToday() {
   return getDaily().lastClaimDate === localDateKey();
 }
 
+function isDailyUnlocked() {
+  return game.totalCatsBought > 0 || ACHIEVEMENTS.some(a => a.id === 'first_cat' && a.earned);
+}
+
 // Streak that would be set if claimed right now (yesterday's claim -> +1, else fresh 1)
 function getPendingStreak() {
   const d = getDaily();
@@ -55,7 +59,7 @@ function dailyRewardSymbol(currency) {
 }
 
 function claimDaily() {
-  if (isDailyClaimedToday()) return;
+  if (!isDailyUnlocked() || isDailyClaimedToday()) return;
   const tier = getPendingTier();
   const reward = DAILY_REWARDS[tier - 1];
   const d = getDaily();
@@ -78,9 +82,10 @@ function renderDaily() {
   if (!container) return;
 
   const claimed = isDailyClaimedToday();
+  const unlocked = isDailyUnlocked();
   const tier = getPendingTier();
   const d = getDaily();
-  const sig = [i18n.currentLang, claimed ? 1 : 0, tier, d.count].join('|');
+  const sig = [i18n.currentLang, claimed ? 1 : 0, unlocked ? 1 : 0, tier, d.count].join('|');
   if (sig === _dailySig) return;
   _dailySig = sig;
 
@@ -113,7 +118,8 @@ function renderDaily() {
   } else {
     const r = DAILY_REWARDS[tier - 1];
     html += `<div style="text-align: center; margin-top: 16px;">`;
-    html += `<button class="btn btn-primary" onclick="claimDaily()">🎁 ${i18n.t('daily.claim', 'Claim')} +${formatNumber(r.amount)}${dailyRewardSymbol(r.currency)}</button>`;
+    html += `<button class="btn btn-primary" onclick="claimDaily()" ${unlocked ? '' : 'disabled'}>🎁 ${i18n.t('daily.claim', 'Claim')} +${formatNumber(r.amount)}${dailyRewardSymbol(r.currency)}</button>`;
+    if (!unlocked) html += `<p>${i18n.t('daily.locked', 'Buy your first cat to unlock daily rewards.')}</p>`;
     html += `</div>`;
   }
 
@@ -125,7 +131,7 @@ function renderDaily() {
 function updateDailyBadge() {
   const btn = document.querySelector('.nav-btn[data-panel="daily"]');
   if (!btn) return;
-  if (isDailyClaimedToday()) btn.classList.remove('daily-ready');
+  if (!isDailyUnlocked() || isDailyClaimedToday()) btn.classList.remove('daily-ready');
   else btn.classList.add('daily-ready');
 }
 
