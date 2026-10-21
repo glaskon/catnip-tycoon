@@ -72,16 +72,20 @@ const PRESTIGE_TIERS = [
 let elixirTimer = 0;
 const ELIXIR_RATE_PER_PRESTIGE = 1 / 60; // 1 elixir per minute per prestige over 10
 
-// Called from gameLoop every 100ms
-function tickElixirs(delta) {
-  if (game.prestigeCount < 10) return;
+// Shared by live ticks and offline settlement.
+function getElixirRate() {
+  if (game.prestigeCount < 10) return 0;
   
   let rate = (game.prestigeCount - 9) * ELIXIR_RATE_PER_PRESTIGE;
   // ElixirMastery: +50% elixir rate
   if (typeof hasUpgrade === 'function' && hasUpgrade('elixirmastery')) {
     rate *= 1.5;
   }
-  game.elixirs += rate * delta;
+  return rate;
+}
+
+function tickElixirs(delta) {
+  game.elixirs += getElixirRate() * delta;
 }
 
 // Spend elixirs on a temporary boost

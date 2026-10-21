@@ -4,6 +4,7 @@ const router = express.Router();
 
 const { pool } = require('../db');
 const { authMiddleware } = require('../auth');
+const { hasRealProgress } = require('../../public/js/save-progress');
 
 /**
  * GET /api/save
@@ -13,21 +14,23 @@ const { authMiddleware } = require('../auth');
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT game_state, updated_at FROM saves WHERE user_id = $1',
+      'SELECT game_state, updated_at, revision FROM saves WHERE user_id = $1',
       [req.user.id]
     );
 
     if (result.rows.length === 0) {
-      // No save exists yet — return minimal indicator so frontend keeps starter
+      // No save exists yet — frontend explicitly selects guest import or zero state.
       return res.json({
         game_state: { _fresh: true },
-        updated_at: new Date().toISOString(),
+        updated_at: null,
+        revision: 0,
       });
     }
 
     res.json({
       game_state: result.rows[0].game_state,
       updated_at: result.rows[0].updated_at,
+      revision: result.rows[0].revision,
     });
   } catch (err) {
     console.error('[Save] Load error:', err.message);
@@ -53,6 +56,7 @@ function isId(v) {
 
 // Top-level schema: key -> type (allowlist; unknown keys are rejected)
 const STATE_SCHEMA = {
+  savedAt: 'int', saveOwnerId: 'strOrNull', guestMigrationId: 'strOrNull',
   fish: 'num', fishPerClick: 'num', fishPerSecond: 'num', catnip: 'num',
   diamonds: 'num', totalFishEarned: 'num', prestigeCount: 'int',
   speedMultiplier: 'num', elixirs: 'num', clickCount: 'int',
@@ -188,38 +192,73 @@ function validateState(s) {
 /**
  * POST /api/save
  * Save/update the current user's game state in the database.
- * Body: { game_state: { ... } } — validated (types, ranges, size).
+ * Body: { game_state, expected_revision, migration_id? } — validated.
  * Requires valid JWT.
  */
 router.post('/', authMiddleware, async (req, res) => {
+  const { game_state, expected_revision, migration_id } = req.body;
+  if (!validateState(game_state) || !Number.isInteger(expected_revision) || expected_revision < 0 ||
+      (migration_id !== undefined && !isId(migration_id))) {
+    return res.status(400).json({ error: 'Invalid game_state or revision' });
+  }
+
+  let client;
   try {
-    const { game_state } = req.body;
-
-    if (!game_state || typeof game_state !== 'object') {
-      return res.status(400).json({ error: 'game_state object is required' });
+    client = await pool.connect();
+    await client.query('BEGIN');
+    // Also locks saves that do not exist yet; serializes imports and autosaves.
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
+    const result = await client.query('SELECT game_state, revision FROM saves WHERE user_id = $1 FOR UPDATE', [req.user.id]);
+    const current = result.rows[0];
+    const revision = current ? current.revision : 0;
+    if (migration_id) {
+      const receipt = await client.query('SELECT user_id FROM guest_imports WHERE migration_id = $1', [migration_id]);
+      if (receipt.rows.length) {
+        await client.query('ROLLBACK');
+        if (receipt.rows[0].user_id !== req.user.id) {
+          return res.status(409).json({ error: 'Guest progress already imported', code: 'IMPORT_USED' });
+        }
+        return res.json({ success: true, already_migrated: true, game_state: current.game_state, revision });
+      }
+      if (current && (hasRealProgress(current.game_state) || current.game_state.guestMigrationId)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Account already has progress', code: 'SAVE_CONFLICT' });
+      }
+      if (!hasRealProgress(game_state) || game_state.guestMigrationId !== migration_id) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid guest import' });
+      }
     }
-    if (!validateState(game_state)) {
-      return res.status(400).json({ error: 'Invalid game_state' });
+    if (revision !== expected_revision) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Save changed; reload before saving', code: 'SAVE_CONFLICT' });
     }
-
-    // Upsert: check if save row exists, then insert or update
-    const existing = await pool.query('SELECT id FROM saves WHERE user_id = $1', [req.user.id]);
-    if (existing.rows.length > 0) {
-      await pool.query(
-        'UPDATE saves SET game_state = $1, updated_at = NOW() WHERE user_id = $2',
-        [JSON.stringify(game_state), req.user.id]
-      );
+    if (migration_id) {
+      const inserted = await client.query(
+        'INSERT INTO guest_imports (migration_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING migration_id',
+        [migration_id, req.user.id]);
+      if (!inserted.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Guest progress already imported', code: 'IMPORT_USED' });
+      }
+    }
+    game_state.saveOwnerId = String(req.user.id);
+    game_state.guestMigrationId = migration_id || (current && current.game_state.guestMigrationId) || null;
+    if (current) {
+      await client.query('UPDATE saves SET game_state = $1, updated_at = NOW(), revision = revision + 1 WHERE user_id = $2',
+        [JSON.stringify(game_state), req.user.id]);
     } else {
-      await pool.query(
-        'INSERT INTO saves (user_id, game_state, updated_at) VALUES ($1, $2, NOW())',
-        [req.user.id, JSON.stringify(game_state)]
-      );
+      await client.query('INSERT INTO saves (user_id, game_state, revision) VALUES ($1, $2, 1)',
+        [req.user.id, JSON.stringify(game_state)]);
     }
-
-    res.json({ success: true, saved_at: new Date().toISOString() });
+    await client.query('COMMIT');
+    res.json({ success: true, revision: revision + 1 });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     console.error('[Save] Save error:', err.message);
     res.status(500).json({ error: 'Failed to save game state' });
+  } finally {
+    if (client) client.release();
   }
 });
 

@@ -26,6 +26,10 @@ const game = {
   dailyClicks: 0,       // clicks on the current day (daily achievements)
   lastClickDate: '',    // day marker for dailyClicks reset
 
+  savedAt: 0,
+  saveOwnerId: null,
+  guestMigrationId: null,
+
   // --- Offline time ---
   offlineTimeMinutes: 60, // Default 1 hour — can be extended via shop
 
@@ -164,7 +168,7 @@ function spendFish(amount) {
 }
 
 // Recalculate fish per second from all owned cats
-function recalcFPS() {
+function recalcFPS(now = Date.now()) {
   let base = 0;
   let hasWizardCat = false;
   let hasFeniks = false;
@@ -230,7 +234,7 @@ function recalcFPS() {
 
   // Cat Life: happy pet (hunger >= 70) = +10% production
   if (typeof catLifeProductionMultiplier === 'function') {
-    base *= catLifeProductionMultiplier();
+    base *= catLifeProductionMultiplier(now);
   }
 
   base *= (game.productionMultiplier || 1);
@@ -291,11 +295,10 @@ function applyBoost(kind, mult, durationMs) {
   recomputeBoostedValues();
 }
 
-function recomputeBoostedValues() {
-  const now = Date.now();
+function recomputeBoostedValues(now = Date.now(), silent = false) {
   const before = game.activeBoosts.length;
   game.activeBoosts = game.activeBoosts.filter(b => b.expiresAt > now);
-  if (game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
+  if (!silent && game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
   // Merge repeated activations and legacy saves: strongest multiplier wins,
   // Remaining durations add up, capped at the longer of five minutes and
   // the longest single activation of that kind (also preserved in saves).
@@ -328,7 +331,7 @@ function recomputeBoostedValues() {
   game.fishPerClick = game.baseFishPerClick * cp;
   game.productionMultiplier = pp;
   // Production multiplier affects fishPerSecond — recalc only when it changes
-  if (pp !== prevPP && typeof recalcFPS === 'function') recalcFPS();
+  if (pp !== prevPP && typeof recalcFPS === 'function') recalcFPS(now);
 }
 
 // Check if player can afford a cost in given currency
@@ -711,7 +714,11 @@ function setSaveStatus(status) {
 }
 
 function buildSaveState() {
+  const now = Date.now();
   return {
+    savedAt: now,
+    saveOwnerId: game.saveOwnerId,
+    guestMigrationId: game.guestMigrationId,
     fish: game.fish,
     fishPerClick: game.baseFishPerClick,
     fishPerSecond: game.fishPerSecond,
@@ -729,7 +736,7 @@ function buildSaveState() {
     lastClickDate: game.lastClickDate || '',
     totalCatsBought: game.totalCatsBought,
     offlineTimeMinutes: game.offlineTimeMinutes,
-    activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()), maxDurationMs: b.maxDurationMs })),
+    activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - now), maxDurationMs: b.maxDurationMs })),
     catlife: game.catlife || null,
     daily: game.daily || null,
     gacha: game.gacha || null,
@@ -750,12 +757,20 @@ function safeNum(v, fallback, max) {
   return (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max) ? v : fallback;
 }
 
-function applyGameState(state) {
+function applyGameState(state, at = Date.now()) {
   if (!state || typeof state !== 'object' || Array.isArray(state)) return false;
 
   // A save replaces the collections, including omitted entries. Keep getters
   // and definitions from initGame(), never from untrusted serialized objects.
   initGame();
+  game.savedAt = safeNum(state.savedAt, 0);
+  game.saveOwnerId = typeof state.saveOwnerId === 'string' ? state.saveOwnerId : null;
+  game.guestMigrationId = typeof state.guestMigrationId === 'string' ? state.guestMigrationId : null;
+  game.catlife = null;
+  game.daily = null;
+  game.gacha = null;
+  game._quantumActive = false;
+  game._quantumTimer = 0;
 
   game.fish = safeNum(state.fish, 0);
   game.fishPerClick = safeNum(state.fishPerClick, 1);
@@ -778,7 +793,7 @@ function applyGameState(state) {
   if (state.catlife && typeof state.catlife === 'object') {
     game.catlife = {
       hunger: Math.min(100, safeNum(state.catlife.hunger, 100, 100)),
-      lastUpdate: safeNum(state.catlife.lastUpdate, Date.now()),
+      lastUpdate: safeNum(state.catlife.lastUpdate, at),
       fedCount: safeNum(state.catlife.fedCount, 0),
     };
   }
@@ -850,113 +865,221 @@ function applyGameState(state) {
   const savedShopCounts = (state.shopCounts && typeof state.shopCounts === 'object' && !Array.isArray(state.shopCounts)) ? state.shopCounts : {};
   window.shopCounts = savedShopCounts;
   localStorage.setItem('catnip-shopcounts', JSON.stringify(savedShopCounts));
+  if (typeof purchasedItems !== 'undefined') purchasedItems = window.purchasedItems;
+  if (typeof shopCounts !== 'undefined') shopCounts = window.shopCounts;
 
-  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: Date.now() + b.remainingMs, maxDurationMs: b.maxDurationMs }));
-  recomputeBoostedValues();
+  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: at + b.remainingMs, maxDurationMs: b.maxDurationMs }));
+  recomputeBoostedValues(at, true);
 
-  recalcFPS();
-  render();
+  recalcFPS(at);
   return true;
 }
 
-// Save to both localStorage (always) and server (if logged in)
-async function saveGame() {
+// Serialize saves: an earlier response must never advance a later snapshot's
+// revision. A transition waits for this queue before changing the active user.
+let _saveQueue = Promise.resolve();
+let _stateTransition = false;
+let _transitionElements = [];
+
+function beginStateTransition() {
+  _stateTransition = true;
+  game.isReady = false;
+  _transitionElements = Array.from(document.body.children).map(el => [el, el.inert]);
+  for (const [el] of _transitionElements) el.inert = true;
+}
+
+function endStateTransition() {
+  for (const [el, inert] of _transitionElements) el.inert = inert;
+  _transitionElements = [];
+  recomputeBoostedValues();
+  recalcFPS();
+  game.lastTick = Date.now();
+  game.isReady = true;
+  _stateTransition = false;
+}
+
+function showProgressNotice(message, retry = false) {
+  const old = document.getElementById('progressNotice');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'progressNotice';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:#000b;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'max-width:420px;padding:24px;background:var(--bg-secondary);border-radius:12px;';
+  const text = document.createElement('p');
+  text.textContent = message;
+  const button = document.createElement('button');
+  button.className = 'btn btn-primary';
+  button.textContent = i18n.t(retry ? 'progress.retry' : 'progress.continue', retry ? 'Reload and retry' : 'Continue');
+  button.onclick = () => retry ? window.location.reload() : overlay.remove();
+  panel.append(text, button);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  button.focus();
+}
+
+function saveGame() {
+  if (_stateTransition || !game.isReady) return _saveQueue;
   const attempt = ++_saveAttempt;
   setSaveStatus('pending');
-  let failed = false;
   let state;
   try {
     state = buildSaveState();
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  } catch (e) {
-    failed = true;
-    console.error('[Game] LocalStorage save failed:', e.message);
+  } catch (err) {
+    setSaveStatus('error');
+    return Promise.resolve(false);
   }
-
-  // Then try server if logged in
-  if (api.token && state) {
+  const token = api.token;
+  _saveQueue = _saveQueue.then(async () => {
     try {
-      await api.saveGameState(state);
+      if (token && token === api.token) await api.saveGameState(state);
+      if (attempt === _saveAttempt) setSaveStatus('saved');
+      return true;
     } catch (err) {
-      failed = true;
-      console.error('[Game] Server save failed:', err.message);
+      if (attempt === _saveAttempt) setSaveStatus('error');
+      console.error('[Game] Save failed:', err.message);
+      return false;
     }
-  }
-  // An older request must not overwrite the latest attempt's status.
-  if (attempt === _saveAttempt) setSaveStatus(failed ? 'error' : 'saved');
+  });
+  return _saveQueue;
 }
 
-// Load game state from localStorage (guest mode / instant restore)
+function readLocalState() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return null;
+  const state = JSON.parse(raw);
+  if (!state || typeof state !== 'object' || Array.isArray(state)) throw new Error('Invalid local save');
+  return state;
+}
+
+// Integrate at expiry boundaries. The same live formulas provide every rate.
+// Keep all segments up to the hard cap so a purchased extension can use them.
+function restoreWithOffline(state, fallbackTime, now = Date.now()) {
+  const timestamp = safeNum(state.savedAt, 0) || safeNum(fallbackTime, 0) || now;
+  const start = Math.min(timestamp, now);
+  applyGameState(state, start);
+  const end = Math.min(now, start + OFFLINE_MAX_MIN * 60000);
+  const boundaries = [start, end];
+  for (const boost of game.activeBoosts) {
+    if (boost.expiresAt > start && boost.expiresAt < end) boundaries.push(boost.expiresAt);
+  }
+  // The pet's happy bonus is also time-limited by hunger decay.
+  if (game.catlife && typeof CATLIFE_DECAY_PER_SEC !== 'undefined') {
+    const moodEnd = game.catlife.lastUpdate + (game.catlife.hunger - 70) / CATLIFE_DECAY_PER_SEC * 1000;
+    if (moodEnd > start && moodEnd < end) boundaries.push(moodEnd);
+  }
+  boundaries.sort((a, b) => a - b);
+  const segments = [];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const from = boundaries[i], to = boundaries[i + 1];
+    if (to <= from) continue;
+    recomputeBoostedValues(from, true);
+    recalcFPS((from + to) / 2);
+    segments.push({
+      from: (from - start) / 1000, to: (to - start) / 1000,
+      fish: (game.fishPerSecond + (hasUpgrade('autoclicker') ? calculateClickValue() : 0)) * game.speedMultiplier,
+      catnip: getCatnipShrineRate() * game.speedMultiplier,
+      elixirs: typeof getElixirRate === 'function' ? getElixirRate() : 0,
+    });
+  }
+  recomputeBoostedValues(now, true);
+  recalcFPS(now);
+  game.lastTick = now;
+  game.savedAt = now;
+  const context = { awaySeconds: (now - start) / 1000, segments, creditedSeconds: 0 };
+  creditOffline(context, game.offlineTimeMinutes * 60);
+  return context;
+}
+
+function offlineTotals(context, seconds) {
+  const totals = { fish: 0, catnip: 0, elixirs: 0 };
+  if (!context) return totals;
+  const limit = Math.min(Math.max(0, seconds), context.awaySeconds, OFFLINE_MAX_MIN * 60);
+  for (const segment of context.segments) {
+    const duration = Math.max(0, Math.min(segment.to, limit) - segment.from);
+    for (const key of Object.keys(totals)) totals[key] += segment[key] * duration;
+  }
+  return totals;
+}
+
+function creditOffline(context, seconds) {
+  const before = offlineTotals(context, context.creditedSeconds);
+  const after = offlineTotals(context, seconds);
+  const gain = {};
+  for (const key of Object.keys(after)) gain[key] = Math.max(0, after[key] - before[key]);
+  addFish(gain.fish);
+  game.catnip += gain.catnip;
+  game.elixirs += gain.elixirs;
+  context.creditedSeconds = Math.max(context.creditedSeconds, Math.min(seconds, context.awaySeconds, OFFLINE_MAX_MIN * 60));
+  return gain;
+}
+
 function loadLocalGame() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return false;
-    const state = JSON.parse(raw);
-    return applyGameState(state);
-  } catch (e) {
-    console.error('[Game] LocalStorage load failed:', e.message);
-    return false;
-  }
+  const state = readLocalState();
+  if (!state) return false;
+  const context = restoreWithOffline(state);
+  // Persist the credited amount and its new timestamp together before showing it.
+  localStorage.setItem(SAVE_KEY, JSON.stringify(buildSaveState()));
+  showOfflineEarnings(context);
+  return true;
 }
 
-// Load game state from server
-async function loadGame() {
+// The server either receives one entire guest snapshot or supplies one entire
+// account snapshot. The original local snapshot is retained as a recovery copy.
+async function loadGame(localState = readLocalState()) {
   if (!api.token) return;
-
-  try {
-    const result = await api.loadGameState();
-    const state = result.gameState;
-    const updatedAt = result.updatedAt;
-
-    if (!state || state._fresh) {
-      // No save on server yet — keep whatever localStorage had (or defaults)
-      console.log('[Game] Fresh account — keeping local state');
-      recalcFPS();
-      render();
+  const result = await api.loadGameState();
+  const serverState = result.gameState || {};
+  const owner = String(game.user.id);
+  if (localState && hasRealProgress(localState)) {
+    localStorage.setItem('catnip-recovery-' + (localState.saveOwnerId || 'guest'), JSON.stringify(localState));
+  }
+  let context;
+  let checkpoint;
+  let message = i18n.t('progress.account', 'Account progress loaded. It replaces local progress; a local recovery copy has been kept.');
+  const eligible = localState && !localState.saveOwnerId && hasRealProgress(localState);
+  if (eligible && !hasRealProgress(serverState) && !serverState.guestMigrationId) {
+    // Store the stable ID BEFORE sending. A lost response is safe to retry.
+    localState.guestMigrationId = localState.guestMigrationId || crypto.randomUUID();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(localState));
+    localStorage.setItem('catnip-recovery-guest', JSON.stringify(localState));
+    context = restoreWithOffline(localState);
+    game.saveOwnerId = owner;
+    let imported;
+    checkpoint = buildSaveState();
+    try {
+      imported = await api.saveGameState(checkpoint, localState.guestMigrationId);
+    } catch (err) {
+      if (err.code !== 'IMPORT_USED') throw err;
+      // This snapshot belongs to another account. Keep its recovery copy,
+      // then explicitly choose this account's state instead of importing again.
+      await loadGame(null);
+      showProgressNotice(i18n.t('progress.used', 'This guest progress was already transferred to another account. The current account was loaded; the local recovery copy is kept.'));
       return;
     }
-
-    // Restore from server state (overwrites any local data)
-    applyGameState(state);
-
-    // Calculate offline earnings if we have a last save timestamp
-    if (updatedAt) {
-      const lastSave = new Date(updatedAt).getTime();
-      const now = Date.now();
-      const rawAwaySeconds = (now - lastSave) / 1000;
-      const offlineSeconds = Math.min(
-        rawAwaySeconds,
-        game.offlineTimeMinutes * 60
-      );
-
-      if (offlineSeconds > 30) { // Only show if more than 30s offline
-        // Use live-recalculated FPS and speedMultiplier instead of stale saved value
-        const fps = game.fishPerSecond;
-        const catnipRate = getCatnipShrineRate();
-        const offlineFish = fps * offlineSeconds * game.speedMultiplier;
-        const offlineCatnip = catnipRate * offlineSeconds * game.speedMultiplier;
-
-        setTimeout(() => {
-          const hours = Math.floor(offlineSeconds / 3600);
-          const mins = Math.floor((offlineSeconds % 3600) / 60);
-          const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-          showOfflineEarnings(timeStr, rawAwaySeconds, fps, catnipRate);
-        }, 1000);
-
-        if (offlineFish > 0) addFish(offlineFish);
-        if (offlineCatnip > 0) game.catnip += offlineCatnip;
-      }
+    if (imported.already_migrated) {
+      context = restoreWithOffline(imported.game_state);
+      checkpoint = buildSaveState();
+      await api.saveGameState(checkpoint);
     }
-
-    // Save server state to localStorage too (so guest has it if they log out later)
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(buildSaveState()));
-    } catch (e) {
-      // ignore storage errors
-    }
-  } catch (err) {
-    console.error('[Game] Load failed:', err.message);
+    message = i18n.t('progress.migrated', 'Guest progress transferred and saved to your account. This transfer can only happen once.');
+  } else {
+    context = restoreWithOffline(serverState, Date.parse(result.updatedAt));
+    game.saveOwnerId = owner;
+    // Commit the offline credit before allowing play/reload to claim it again.
+    checkpoint = buildSaveState();
+    await api.saveGameState(checkpoint);
   }
+  // Both sources must retain the identical timestamp and boost durations,
+  // regardless of how long the server took to acknowledge the write.
+  localStorage.setItem(SAVE_KEY, JSON.stringify(checkpoint));
+  setSaveStatus('saved');
+  showOfflineEarnings(context);
+  showProgressNotice(message);
+  render();
 }
 
 // Start game loops
@@ -971,27 +1094,18 @@ function startGameLoops() {
 
 // Offline earnings context — kept so buying more time can retroactively
 // top up earnings for the extra window (if the player was away longer)
-let _offlineAwaySeconds = 0;
-let _offlineFps = 0;
-let _offlineCatnipRate = 0;
+let _offlineContext = { awaySeconds: 0, segments: [], creditedSeconds: 0 };
 
-// Recalculate displayed offline totals + button states for the current window
+// Show actual credited totals without compact-number rounding.
 function updateOfflinePopup() {
   const fishEl = document.getElementById('offlineFishTotal');
-  if (!fishEl) return;
-
-  const secs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
-  const fish = _offlineFps * secs;
-  const catnip = _offlineCatnipRate * secs;
-  fishEl.textContent = formatNumber(Math.floor(fish));
-
-  const catnipLine = document.getElementById('offlineCatnipLine');
-  if (catnip > 0) {
-    catnipLine.style.display = '';
-    document.getElementById('offlineCatnipTotal').textContent = formatNumber(Math.floor(catnip));
-  } else {
-    catnipLine.style.display = 'none';
-  }
+  if (!fishEl || !_offlineContext) return;
+  const totals = offlineTotals(_offlineContext, _offlineContext.creditedSeconds);
+  fishEl.textContent = String(totals.fish);
+  document.getElementById('offlineCatnipTotal').textContent = String(totals.catnip);
+  document.getElementById('offlineElixirTotal').textContent = String(totals.elixirs);
+  document.getElementById('offlineCatnipLine').style.display = totals.catnip > 0 ? '' : 'none';
+  document.getElementById('offlineElixirLine').style.display = totals.elixirs > 0 ? '' : 'none';
 
   const h = Math.floor(game.offlineTimeMinutes / 60);
   const m = game.offlineTimeMinutes % 60;
@@ -1011,6 +1125,7 @@ function updateOfflinePopup() {
 // Buy +30 min of offline window. Retroactively grants earnings for the extra
 // time if the player was away longer than the old window allowed.
 function buyOfflineTime(currency) {
+  if (_stateTransition || !_offlineContext || !['catnip', 'diamonds'].includes(currency)) return false;
   if (game.offlineTimeMinutes >= OFFLINE_MAX_MIN) {
     showDebug('buyOfflineTime: window at max ' + OFFLINE_MAX_MIN + ' min');
     return false;
@@ -1030,25 +1145,9 @@ function buyOfflineTime(currency) {
     game.diamonds -= cost;
   }
 
-  const oldSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
   game.offlineTimeMinutes = Math.min(game.offlineTimeMinutes + OFFLINE_STEP_MIN, OFFLINE_MAX_MIN);
-  const newSecs = Math.min(_offlineAwaySeconds, game.offlineTimeMinutes * 60);
-
-  showDebug('buyOfflineTime: +' + OFFLINE_STEP_MIN + ' min (window now ' + game.offlineTimeMinutes + ' min), paid ' + cost + ' ' + currency);
-
-  // Retroactive top-up for the extra window
-  const gainedSecs = newSecs - oldSecs;
-  if (gainedSecs > 0) {
-    const gainedFish = _offlineFps * gainedSecs;
-    const gainedCatnip = _offlineCatnipRate * gainedSecs;
-    if (gainedFish > 0) addFish(gainedFish);
-    if (gainedCatnip > 0) game.catnip += gainedCatnip;
-    if (gainedFish > 0 || gainedCatnip > 0) {
-      showToast(i18n.t('offline.topup', '⏱️ +{m} min offline — 🐟 +{fish}')
-        .replace('{m}', String(Math.floor(gainedSecs / 60)))
-        .replace('{fish}', formatNumber(Math.floor(gainedFish))));
-    }
-  }
+  const gain = creditOffline(_offlineContext, game.offlineTimeMinutes * 60);
+  showDebug('buyOfflineTime: window now ' + game.offlineTimeMinutes + ' min, fish +' + gain.fish);
 
   updateOfflinePopup();
   saveGame();
@@ -1057,14 +1156,14 @@ function buyOfflineTime(currency) {
 }
 
 // Show offline earnings popup
-function showOfflineEarnings(timeAway, awaySeconds, fps, catnipRate) {
-  _offlineAwaySeconds = awaySeconds;
-  _offlineFps = fps;
-  _offlineCatnipRate = catnipRate;
-
-  // Remove existing popup if any
+function showOfflineEarnings(context) {
+  _offlineContext = context;
   const existing = document.getElementById('offlinePopup');
   if (existing) existing.remove();
+  const totals = offlineTotals(context, context.creditedSeconds);
+  if (!Object.values(totals).some(value => value > 0)) return;
+  const seconds = Math.floor(context.awaySeconds);
+  const timeAway = `${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ${seconds % 60}s`;
 
   const popup = document.createElement('div');
   popup.id = 'offlinePopup';
@@ -1075,6 +1174,7 @@ function showOfflineEarnings(timeAway, awaySeconds, fps, catnipRate) {
       <div style="margin: 12px 0;">
         <p style="font-size: 1.2rem;">🐟 <b style="color: var(--gold);" id="offlineFishTotal">0</b> ${i18n.t('offline.fishEarned', 'fish earned')}</p>
         <p style="font-size: 1rem;" id="offlineCatnipLine">🌿 <b style="color: var(--cat-orange);" id="offlineCatnipTotal">0</b> ${i18n.t('offline.catnipEarned', 'catnip earned')}</p>
+        <p style="font-size: 1rem;" id="offlineElixirLine">🧪 <b id="offlineElixirTotal">0</b> ${i18n.t('offline.elixirsEarned', 'elixirs earned')}</p>
       </div>
       <p style="font-size: 0.75rem; color: var(--text-muted);" id="offlineWindowInfo"></p>
       <div id="offlineBuyRow" style="margin-top: 10px; display: flex; gap: 8px; justify-content: center;">

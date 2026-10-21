@@ -1,4 +1,12 @@
 {
+  "progress.expired": "La sesión ha caducado. Se ha cargado el progreso local; inicia sesión de nuevo para cargar tu cuenta.",
+  "progress.used": "Este progreso de invitado ya se transfirió a otra cuenta. Se ha cargado la cuenta actual; se conserva la copia local de recuperación.",
+  "progress.migrated": "El progreso de invitado se ha transferido y guardado en tu cuenta. Esta transferencia solo se realiza una vez.",
+  "progress.account": "Se ha cargado el progreso de la cuenta. Sustituye al local; se ha conservado una copia local de recuperación.",
+  "progress.error": "No se pudo confirmar el guardado. El progreso está protegido; recarga para reintentar.",
+  "progress.retry": "Recargar y reintentar",
+  "progress.continue": "Continuar",
+  "offline.elixirsEarned": "elixires obtenidos",
   "daily.locked": "Compra tu primer gato para desbloquear las recompensas diarias.",
   "game.saveStatus.idle": "Aún sin guardar",
   "game.saveStatus.pending": "Guardando…",

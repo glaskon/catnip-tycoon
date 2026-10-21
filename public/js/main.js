@@ -20,9 +20,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAchievements();
   loadPurchasedItems();
 
-  // Restore game state from localStorage (works for guests + instant restore)
-  loadLocalGame();
-
   // Set up UI
   initBackground();
   drawCat();
@@ -30,29 +27,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAuthUI();
   initAdminUI();
 
-  // Try to load game from server if logged in (overwrites local if newer)
-  if (api.token) {
-    try {
-      const me = await api.getMe();
-      game.user = me.user;
-      game.isAdmin = me.user.is_admin;
-      updateUserStatus();
-      await loadGame();
-    } catch (err) {
-      console.log('[Main] Not logged in or session expired');
-      api.logout();
+  // Select one source before restoring or crediting offline production.
+  beginStateTransition();
+  try {
+    if (api.token) {
+      let me;
+      try {
+        me = await api.getMe();
+      } catch (err) {
+        if (err.status !== 401 && err.status !== 403) throw err;
+        api.logout();
+        // Legacy account caches have no ownership metadata. Protect them
+        // from being imported as guest progress after an expired session.
+        const local = readLocalState();
+        if (local && !('saveOwnerId' in local)) {
+          local.saveOwnerId = 'legacy-account';
+          localStorage.setItem(SAVE_KEY, JSON.stringify(local));
+        }
+        loadLocalGame();
+        showProgressNotice(i18n.t('progress.expired', 'Session expired. Local progress loaded; log in again to load your account.'));
+      }
+      if (me) {
+        game.user = me.user;
+        game.isAdmin = me.user.is_admin;
+        await loadGame();
+      }
+    } else {
+      loadLocalGame();
     }
+    updateUserStatus();
+    updateAdminVisibility();
+    endStateTransition();
+  } catch (err) {
+    console.error('[Main] Restore failed:', err.message);
+    // Keep the local snapshot and token for a safe retry. Never autosave an
+    // unverified local state over an account after a network/auth failure.
+    showProgressNotice(i18n.t('progress.error', 'Could not confirm the save. Progress is protected; reload to retry.'), true);
   }
-
-  // applyGameState() updated the window.purchasedItems / window.shopCounts
-  // mirrors from the server — resync shop.js module vars so subsequent
-  // purchases (and server saves) start from the server state.
-  if (Array.isArray(window.purchasedItems)) purchasedItems = window.purchasedItems;
-  if (window.shopCounts && typeof window.shopCounts === 'object') shopCounts = window.shopCounts;
-
-  // Mark game ready so the loop can tick (guests are ready immediately;
-  // logged-in users become ready only after loadGame finishes above)
-  game.isReady = true;
 
   // Start game loops
   startGameLoops();
@@ -66,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderGacha();
   renderAchievements();
   renderDaily();
-  refreshDaily();
+  if (game.isReady) refreshDaily();
 
   console.log('[Catnip Tycoon] Ready!');
 });
@@ -160,13 +171,21 @@ function initAuthUI() {
   }
 }
 
-function openAuthModal() {
+async function openAuthModal() {
+  if (_stateTransition) return;
   if (api.token) {
-    // Logout
+    // Finish pending account saves before switching identity.
+    const saved = saveGame();
+    beginStateTransition();
+    if (!await saved) {
+      showProgressNotice(i18n.t('progress.error', 'Could not confirm the save. Progress is protected; reload to retry.'), true);
+      return;
+    }
     api.logout();
     game.user = null;
     game.isAdmin = false;
     updateUserStatus();
+    endStateTransition();
     showToast('👋 Logged out');
     return;
   }
@@ -190,6 +209,7 @@ function toggleAuthMode() {
 
 async function handleAuth(e) {
   e.preventDefault();
+  if (_stateTransition) return;
 
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
@@ -213,8 +233,12 @@ async function handleAuth(e) {
   }
 
   errorEl.textContent = '';
+  const saved = saveGame();
+  beginStateTransition();
 
   try {
+    if (!await saved) throw new Error(i18n.t('game.saveStatus.error'));
+    const localState = readLocalState();
     let result;
     if (authMode === 'login') {
       result = await api.login(email, password);
@@ -224,21 +248,20 @@ async function handleAuth(e) {
 
     game.user = result.user;
     game.isAdmin = result.user.is_admin;
+    await loadGame(localState);
     updateUserStatus();
     closeModal('modalAuth');
-    showToast('✅ Logged in!');
-
-    // Load game state from server
-    await loadGame();
-
-    // Resync shop module vars from the server-loaded window mirrors
-    if (Array.isArray(window.purchasedItems)) purchasedItems = window.purchasedItems;
-    if (window.shopCounts && typeof window.shopCounts === 'object') shopCounts = window.shopCounts;
+    endStateTransition();
 
     // Show admin button if admin
     updateAdminVisibility();
   } catch (err) {
     errorEl.textContent = err.message;
+    if (api.token) {
+      showProgressNotice(i18n.t('progress.error', 'Could not confirm the save. Progress is protected; reload to retry.'), true);
+    } else {
+      endStateTransition();
+    }
   }
 }
 

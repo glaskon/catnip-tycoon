@@ -36,6 +36,15 @@ async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      ALTER TABLE saves ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0;
+
+      -- Permanent receipts: replaying a guest import cannot grant it again.
+      CREATE TABLE IF NOT EXISTS guest_imports (
+        migration_id VARCHAR(100) PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       -- Store transactions (Stripe)
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,

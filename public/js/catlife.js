@@ -7,26 +7,25 @@ const CATLIFE_FOOD_COST = 10000; // fish per meal
 const CATLIFE_MEAL_SIZE = 40;    // hunger restored per meal
 const CATLIFE_DECAY_PER_SEC = 100 / (8 * 3600); // 100 -> 0 in 8 hours
 
-function getCatLife() {
+function getCatLife(now = Date.now()) {
   if (!game.catlife) {
-    game.catlife = { hunger: 100, lastUpdate: Date.now(), fedCount: 0 };
+    game.catlife = { hunger: 100, lastUpdate: now, fedCount: 0 };
   }
   return game.catlife;
 }
 
 // Effective hunger now (decayed in real time since lastUpdate)
-function getCatLifeHunger() {
-  const cl = getCatLife();
-  const now = Date.now();
+function getCatLifeHunger(now = Date.now()) {
+  const cl = getCatLife(now);
   const elapsed = Math.max(0, (now - cl.lastUpdate) / 1000);
   const hunger = cl.hunger - elapsed * CATLIFE_DECAY_PER_SEC;
   return Math.max(0, Math.min(100, hunger));
 }
 
 // 'happy' | 'neutral' | 'sad'
-function getCatLifeMood() {
+function getCatLifeMood(now = Date.now()) {
   if (game.prestigeCount < CATLIFE_UNLOCK_PRESTIGE) return 'locked';
-  const h = getCatLifeHunger();
+  const h = getCatLifeHunger(now);
   if (h >= 70) return 'happy';
   if (h >= 30) return 'neutral';
   return 'sad';
@@ -34,8 +33,8 @@ function getCatLifeMood() {
 
 // Called from recalcFPS — happy pet = +10% production
 let _catLifeProductionMood = null;
-function catLifeProductionMultiplier() {
-  _catLifeProductionMood = getCatLifeMood();
+function catLifeProductionMultiplier(now = Date.now()) {
+  _catLifeProductionMood = getCatLifeMood(now);
   return _catLifeProductionMood === 'happy' ? 1.1 : 1;
 }
 

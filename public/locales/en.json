@@ -1,4 +1,12 @@
 {
+  "progress.expired": "Session expired. Local progress loaded; log in again to load your account.",
+  "progress.used": "This guest progress was already transferred to another account. The current account was loaded; the local recovery copy is kept.",
+  "progress.migrated": "Guest progress transferred and saved to your account. This transfer can only happen once.",
+  "progress.account": "Account progress loaded. It replaces local progress; a local recovery copy has been kept.",
+  "progress.error": "Could not confirm the save. Progress is protected; reload to retry.",
+  "progress.retry": "Reload and retry",
+  "progress.continue": "Continue",
+  "offline.elixirsEarned": "elixirs earned",
   "daily.locked": "Buy your first cat to unlock daily rewards.",
   "game.saveStatus.idle": "Not saved yet",
   "game.saveStatus.pending": "Saving…",

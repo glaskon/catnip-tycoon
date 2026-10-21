@@ -1,4 +1,12 @@
 {
+  "progress.expired": "Sitzung abgelaufen. Lokaler Fortschritt geladen; melde dich erneut an, um dein Konto zu laden.",
+  "progress.used": "Dieser Gastfortschritt wurde bereits auf ein anderes Konto übertragen. Das aktuelle Konto wurde geladen; die lokale Sicherung bleibt erhalten.",
+  "progress.migrated": "Gastfortschritt wurde auf dein Konto übertragen und gespeichert. Diese Übertragung ist einmalig.",
+  "progress.account": "Kontofortschritt geladen. Er ersetzt den lokalen Stand; eine lokale Sicherung wurde behalten.",
+  "progress.error": "Speicherung konnte nicht bestätigt werden. Der Fortschritt bleibt gesichert; lade die Seite erneut.",
+  "progress.retry": "Neu laden",
+  "progress.continue": "Weiter",
+  "offline.elixirsEarned": "verdiente Elixiere",
   "daily.locked": "Kaufe deine erste Katze, um tägliche Belohnungen freizuschalten.",
   "game.saveStatus.idle": "Noch nicht gespeichert",
   "game.saveStatus.pending": "Speichern…",

@@ -26,26 +26,17 @@ async function addCurrency(userId, currency, amount) {
     throw new Error(`Invalid currency: ${currency}. Must be one of: ${validCurrencies.join(', ')}`);
   }
 
-  // Get current save
-  const saveResult = await pool.query(
-    'SELECT game_state FROM saves WHERE user_id = $1',
-    [userId]
+  // Atomic update participates in save revision checks, so an older client
+  // snapshot cannot erase the granted currency (or overwrite a concurrent save).
+  const result = await pool.query(
+    `UPDATE saves SET game_state = jsonb_set(game_state, ARRAY[$2::text],
+       to_jsonb(COALESCE((game_state->>$2)::numeric, 0) + $3::numeric)),
+       updated_at = NOW(), revision = revision + 1
+     WHERE user_id = $1 RETURNING game_state`,
+    [userId, currency, amount]
   );
-
-  if (saveResult.rows.length === 0) {
-    throw new Error('User has no save data');
-  }
-
-  const gameState = saveResult.rows[0].game_state;
-  gameState[currency] = (gameState[currency] || 0) + amount;
-
-  // Update save
-  await pool.query(
-    'UPDATE saves SET game_state = $1, updated_at = NOW() WHERE user_id = $2',
-    [gameState, userId]
-  );
-
-  return { userId, currency, added: amount, newTotal: gameState[currency] };
+  if (!result.rows.length) throw new Error('User has no save data');
+  return { userId, currency, added: amount, newTotal: result.rows[0].game_state[currency] };
 }
 
 // List all users

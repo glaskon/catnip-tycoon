@@ -1,4 +1,12 @@
 {
+  "progress.expired": "Sesja wygasła. Wczytano postęp lokalny; zaloguj się ponownie, aby wczytać konto.",
+  "progress.used": "Ten postęp gościa został już przeniesiony na inne konto. Wczytano stan bieżącego konta; zachowano lokalną kopię do odzyskania.",
+  "progress.migrated": "Postęp gościa został przeniesiony i zapisany na koncie. Ten transfer jest jednorazowy.",
+  "progress.account": "Wczytano postęp konta. Zastąpił on stan lokalny; zachowano lokalną kopię do odzyskania.",
+  "progress.error": "Nie udało się potwierdzić zapisu. Postęp jest zabezpieczony; odśwież stronę, aby ponowić próbę.",
+  "progress.retry": "Odśwież i ponów",
+  "progress.continue": "Kontynuuj",
+  "offline.elixirsEarned": "zdobytych eliksirów",
   "daily.locked": "Kup pierwszego kota, aby odblokować codzienne nagrody.",
   "game.saveStatus.idle": "Jeszcze nie zapisano",
   "game.saveStatus.pending": "Zapisywanie…",

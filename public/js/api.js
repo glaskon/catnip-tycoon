@@ -2,6 +2,7 @@
 const api = {
   baseURL: '/api',
   token: null,
+  revision: null,
 
   // Load token from localStorage on init
   init() {
@@ -27,7 +28,10 @@ const api = {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || `HTTP ${response.status}`);
+      const error = new Error(data.error || `HTTP ${response.status}`);
+      error.code = data.code;
+      error.status = response.status;
+      throw error;
     }
 
     return data;
@@ -54,17 +58,23 @@ const api = {
 
   logout() {
     this.token = null;
+    this.revision = null;
     localStorage.removeItem('catnip-token');
   },
 
   // --- Save / Load ---
   async loadGameState() {
     const data = await this.apiCall('/save', 'GET');
+    this.revision = data.revision;
     return { gameState: data.game_state, updatedAt: data.updated_at };
   },
 
-  async saveGameState(gameState) {
-    return this.apiCall('/save', 'POST', { game_state: gameState });
+  async saveGameState(gameState, migrationId) {
+    const data = await this.apiCall('/save', 'POST', {
+      game_state: gameState, expected_revision: this.revision, migration_id: migrationId,
+    });
+    this.revision = data.revision;
+    return data;
   },
 
   // --- Admin ---
