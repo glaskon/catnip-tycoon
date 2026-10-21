@@ -4,6 +4,7 @@ const game = {
   fish: 0,  // No starter — everything earned by clicking
   fishPerClick: 1,
   baseFishPerClick: 1,
+  clickScalingBaseline: 0, // Legacy saves start scaling only above their restored R₀.
   fishPerSecond: 0,
   catnip: 0,
   diamonds: 0,
@@ -146,6 +147,7 @@ function initGame() {
   });
 
   game.baseFishPerClick = 1;
+  game.clickScalingBaseline = 0;
   game.activeBoosts = [];
   game.productionMultiplier = 1;
 }
@@ -168,8 +170,9 @@ function spendFish(amount) {
   return true;
 }
 
-// Recalculate fish per second from all owned cats
-function recalcFPS(now = Date.now()) {
+// Permanent cat production, before prestige, pet and temporary boosts.
+// Shared by live production and the manual click scaling reference R₀.
+function getBaseCatProduction() {
   let base = 0;
   let hasWizardCat = false;
   let hasFeniks = false;
@@ -211,6 +214,13 @@ function recalcFPS(now = Date.now()) {
   if (hasUpgrade('buda')) base *= 1.5;
   if (hasUpgrade('megakarma')) base *= 5;
   if (hasUpgrade('catnipmastery')) base *= 2;
+
+  return base;
+}
+
+// Recalculate fish per second from all owned cats.
+function recalcFPS(now = Date.now()) {
+  let base = getBaseCatProduction();
 
   // Prestige tier bonuses
   if (game.prestigeCount >= 5) base *= 2; // Tier 3: Divine artifacts
@@ -268,25 +278,33 @@ function getCatCost(catIndex) {
 // Player actions
 // ============================================================
 
-// Base click value with all deterministic upgrades (no random crits).
-// Shared by clickCat() and the autoclicker so both use the same value.
-function calculateClickValue() {
-  let clickValue = game.fishPerClick;
+// R₀ excludes prestige, pet, temporary boosts and the bowl. The autoclicker
+// branch cannot call R₀ again: its passive output retains the original formula.
+function getBaseFishRate() {
+  return getBaseCatProduction() + (hasUpgrade('autoclicker') ? calculateClickValue('baseAutoclicker') : 0);
+}
 
-  // FishClick+ stackable: +1 fish/click per level
-  clickValue += getUpgradeLevel('fishclick');
+// Deterministic click calculation. Only manual clicks gain production scaling.
+// The bowl is applied once, after the scaling term; Lucky Paw keeps its old
+// additive behavior. Click boosters retain their existing base-click effect.
+function calculateClickValue(mode = 'manual') {
+  const level = getUpgradeLevel('fishclick');
+  let clickValue = (mode === 'baseAutoclicker' ? game.baseFishPerClick : game.fishPerClick) + level;
+  let scaling = 0;
+  if (mode === 'manual') {
+    scaling = 0.005 * Math.max(0, getBaseFishRate() - game.clickScalingBaseline) * (1 + 0.005 * level);
+    clickValue += scaling;
+  }
+  if (mode !== 'baseAutoclicker' && hasUpgrade('miska')) clickValue *= 2;
 
-  // Upgrade: Golden Bowl (2x click multiplier)
-  if (hasUpgrade('miska')) clickValue *= 2;
-
-  // LuckyPaw: +0.1 fish/click per cat owned
   if (hasUpgrade('luckypaw')) {
     const totalCats = game.cats.reduce((sum, c) => sum + c.count, 0);
     clickValue += totalCats * 0.1;
   }
 
-  // Round to 2 decimals to prevent float drift (e.g. 0.1 * 3 = 0.30000000000000004)
-  return Math.round(clickValue * 100) / 100;
+  // Preserve legacy rounding when no scaling applies; avoid 1.025 → 1.02
+  // from binary floating point on the new manual scaling path.
+  return Math.round((clickValue + (scaling > 0 ? Number.EPSILON : 0)) * 100) / 100;
 }
 
 const BOOST_MAX_DURATION_MS = 5 * 60 * 1000;
@@ -466,7 +484,7 @@ function getPurchaseQuote(kind, index, quantity = 1) {
 
 // Actual passive fish/s, including speed and the autoclicker.
 function getFishIncomeRate() {
-  return (game.fishPerSecond + (hasUpgrade('autoclicker') ? calculateClickValue() : 0)) * game.speedMultiplier;
+  return (game.fishPerSecond + (hasUpgrade('autoclicker') ? calculateClickValue('autoclicker') : 0)) * game.speedMultiplier;
 }
 
 function getEconomyRates() {
@@ -613,6 +631,7 @@ function prestige() {
   game.fish = 0;
   game.fishPerClick = 1;
   game.baseFishPerClick = 1;
+  game.clickScalingBaseline = 0;
   game.activeBoosts = [];
   game.productionMultiplier = 1;
   game.fishPerSecond = 0;
@@ -693,10 +712,10 @@ function gameLoop() {
     addFish(income);
   }
 
-  // Auto-clicker upgrade: 1 click per second (full click value incl. upgrades)
+  // Auto-clicker: preserve passive income; manual scaling never feeds back here.
   if (hasUpgrade('autoclicker')) {
     const clicks = 1 * delta * game.speedMultiplier;
-    addFish(calculateClickValue() * clicks);
+    addFish(calculateClickValue('autoclicker') * clicks);
   }
 
   // Tier 2 prestige: Cat Shrine generates catnip/s (scales with prestige)
@@ -757,6 +776,7 @@ function buildSaveState() {
     guestMigrationId: game.guestMigrationId,
     fish: game.fish,
     fishPerClick: game.baseFishPerClick,
+    clickScalingBaseline: game.clickScalingBaseline,
     fishPerSecond: game.fishPerSecond,
     catnip: game.catnip,
     diamonds: game.diamonds,
@@ -907,6 +927,10 @@ function applyGameState(state, at = Date.now()) {
   game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: at + b.remainingMs, maxDurationMs: b.maxDurationMs }));
   recomputeBoostedValues(at, true);
 
+  // Missing baseline identifies old saves. Preserve their exact click value
+  // on load, then reward additional R₀ earned after migration. New/empty saves
+  // naturally have R₀ = 0. Persist the baseline so reloads cannot reset growth.
+  game.clickScalingBaseline = safeNum(state.clickScalingBaseline, getBaseFishRate());
   recalcFPS(at);
   return true;
 }

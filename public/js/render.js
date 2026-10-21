@@ -324,6 +324,7 @@ function setStat(id, value) {
 // Update the stats display
 function updateStats() {
   setStat('fishCount', formatNumber(game.fish));
+  setStat('clickValue', `${formatRate(calculateClickValue())} ${i18n.t('economy.clickRate')}`);
   setStat('fishPerSec', formatRate(getFishIncomeRate()));
   setStat('catnipCount', formatNumber(Math.floor(game.catnip)));
   setStat('diamondCount', formatNumber(Math.floor(game.diamonds)));

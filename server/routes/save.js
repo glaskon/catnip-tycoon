@@ -57,7 +57,7 @@ function isId(v) {
 // Top-level schema: key -> type (allowlist; unknown keys are rejected)
 const STATE_SCHEMA = {
   savedAt: 'int', saveOwnerId: 'strOrNull', guestMigrationId: 'strOrNull',
-  fish: 'num', fishPerClick: 'num', fishPerSecond: 'num', catnip: 'num',
+  fish: 'num', fishPerClick: 'num', clickScalingBaseline: 'num', fishPerSecond: 'num', catnip: 'num',
   diamonds: 'num', totalFishEarned: 'num', prestigeCount: 'int',
   speedMultiplier: 'num', elixirs: 'num', clickCount: 'int',
   luckyCatnipCount: 'int', dailyClicks: 'int', totalCatsBought: 'int',

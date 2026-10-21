@@ -102,7 +102,9 @@ test('new metadata and existing boost payloads validate; malformed boosts and me
     { kind: 'speed', mult: 10, remainingMs: 10000001 },
   ];
   for (const boost of boosts) assert.equal((await r.request(1, { ...state, activeBoosts: [boost] }, 1)).code, 400);
-  for (const invalid of [{ savedAt: -1 }, { savedAt: 1.5 }, { saveOwnerId: 1 }, { guestMigrationId: {} }]) {
+  for (const invalid of [{ savedAt: -1 }, { savedAt: 1.5 }, { saveOwnerId: 1 }, { guestMigrationId: {} },
+    { fishPerClick: -1 }, { fishPerClick: Infinity }, { fishPerClick: '1' },
+    { clickScalingBaseline: -1 }, { clickScalingBaseline: NaN }, { clickScalingBaseline: '0' }]) {
     assert.equal((await r.request(1, { ...state, ...invalid }, 1)).code, 400);
   }
   assert.equal((await r.request(1, { ...state, activeBoosts: Array(21).fill(state.activeBoosts[0]) }, 1)).code, 400);
