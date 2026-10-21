@@ -141,10 +141,11 @@ function validateState(s) {
         for (const e of v) {
           if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
           const keys = Object.keys(e);
-          if (keys.length !== 3 || !keys.every(key => key === 'kind' || key === 'mult' || key === 'remainingMs')) return false;
+          if (keys.length < 3 || keys.length > 4 || !keys.every(key => key === 'kind' || key === 'mult' || key === 'remainingMs' || key === 'maxDurationMs')) return false;
           if (!['speed', 'click', 'production'].includes(e.kind)) return false;
           if (typeof e.mult !== 'number' || !Number.isFinite(e.mult) || e.mult <= 0 || e.mult > 1000) return false;
           if (typeof e.remainingMs !== 'number' || !Number.isFinite(e.remainingMs) || e.remainingMs < 0 || e.remainingMs > 10000000) return false;
+          if ('maxDurationMs' in e && (typeof e.maxDurationMs !== 'number' || !Number.isFinite(e.maxDurationMs) || e.maxDurationMs <= 0 || e.maxDurationMs > 10000000)) return false;
         }
         break;
       case 'arrStrings':

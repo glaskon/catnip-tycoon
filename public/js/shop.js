@@ -44,17 +44,17 @@ const SHOP_ITEMS = [
   },
   {
     id: 'boost_speed_1h',
-    name: 'Speed Boost (5min)',
+    name: 'Speed Boost (1h)',
     icon: '⚡',
-    desc: '2x speed for 5 minutes',
+    desc: '2x speed for 1 hour',
     cost: 25,
     currency: 'diamonds',
   },
   {
     id: 'boost_click_1h',
-    name: 'Click Boost (5min)',
+    name: 'Click Boost (1h)',
     icon: '👆',
-    desc: '3x click power for 5 minutes',
+    desc: '3x click power for 1 hour',
     cost: 25,
     currency: 'diamonds',
   },
@@ -281,10 +281,10 @@ function applyShopItem(itemId) {
     case 'boost_speed_1h':
       // Transient boost — tracked in activeBoosts (survives reload, composes
       // with elixirs), expires automatically via recomputeBoostedValues()
-      applyBoost('speed', 2, BOOST_MAX_DURATION_MS);
+      applyBoost('speed', 2, 3600000); // 1 hour
       break;
     case 'boost_click_1h':
-      applyBoost('click', 3, BOOST_MAX_DURATION_MS);
+      applyBoost('click', 3, 3600000); // 1 hour
       break;
     case 'offline_catnip':
     case 'offline_diamond':

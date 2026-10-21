@@ -286,7 +286,7 @@ function calculateClickValue() {
 const BOOST_MAX_DURATION_MS = 5 * 60 * 1000;
 
 function applyBoost(kind, mult, durationMs) {
-  game.activeBoosts.push({ kind: kind, mult: mult, expiresAt: Date.now() + durationMs });
+  game.activeBoosts.push({ kind: kind, mult: mult, expiresAt: Date.now() + durationMs, maxDurationMs: durationMs });
   recomputeBoostedValues();
 }
 
@@ -296,7 +296,8 @@ function recomputeBoostedValues() {
   game.activeBoosts = game.activeBoosts.filter(b => b.expiresAt > now);
   if (game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
   // Merge repeated activations and legacy saves: strongest multiplier wins,
-  // remaining durations add up, with at most five minutes per kind.
+  // Remaining durations add up, capped at the longer of five minutes and
+  // the longest single activation of that kind (also preserved in saves).
   const boosts = [];
   for (const b of game.activeBoosts) {
     if (!['speed', 'click', 'production'].includes(b.kind) ||
@@ -304,11 +305,14 @@ function recomputeBoostedValues() {
         !Number.isFinite(b.expiresAt)) continue;
     const existing = boosts.find(boost => boost.kind === b.kind);
     const remainingMs = b.expiresAt - now;
+    // Legacy saves have no original duration; preserve their remaining time.
+    const maxDurationMs = Number.isFinite(b.maxDurationMs) && b.maxDurationMs > 0 ? b.maxDurationMs : remainingMs;
     if (existing) {
       existing.mult = Math.max(existing.mult, b.mult);
-      existing.expiresAt = now + Math.min(BOOST_MAX_DURATION_MS, existing.expiresAt - now + remainingMs);
+      existing.maxDurationMs = Math.max(existing.maxDurationMs, maxDurationMs);
+      existing.expiresAt = now + Math.min(Math.max(BOOST_MAX_DURATION_MS, existing.maxDurationMs), existing.expiresAt - now + remainingMs);
     } else {
-      boosts.push({ kind: b.kind, mult: b.mult, expiresAt: now + Math.min(BOOST_MAX_DURATION_MS, remainingMs) });
+      boosts.push({ kind: b.kind, mult: b.mult, expiresAt: now + Math.min(Math.max(BOOST_MAX_DURATION_MS, maxDurationMs), remainingMs), maxDurationMs });
     }
   }
   game.activeBoosts = boosts;
@@ -724,7 +728,7 @@ function buildSaveState() {
     lastClickDate: game.lastClickDate || '',
     totalCatsBought: game.totalCatsBought,
     offlineTimeMinutes: game.offlineTimeMinutes,
-    activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()) })),
+    activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - Date.now()), maxDurationMs: b.maxDurationMs })),
     catlife: game.catlife || null,
     daily: game.daily || null,
     gacha: game.gacha || null,
@@ -851,7 +855,7 @@ function applyGameState(state) {
   window.shopCounts = savedShopCounts;
   localStorage.setItem('catnip-shopcounts', JSON.stringify(savedShopCounts));
 
-  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: Date.now() + Math.min(b.remainingMs, BOOST_MAX_DURATION_MS) }));
+  game.activeBoosts = (Array.isArray(state.activeBoosts) ? state.activeBoosts : []).filter(b => b && Number.isFinite(b.remainingMs) && b.remainingMs > 0).map(b => ({ kind: b.kind, mult: b.mult, expiresAt: Date.now() + b.remainingMs, maxDurationMs: b.maxDurationMs }));
   recomputeBoostedValues();
 
   recalcFPS();
