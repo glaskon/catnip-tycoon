@@ -12,6 +12,8 @@
   "game.saveStatus.pending": "Zapisywanie…",
   "game.saveStatus.saved": "Zapisano",
   "game.saveStatus.error": "Błąd zapisu",
+  "game.saveStatus.conflict": "Konflikt zapisu — przeładuj stronę",
+  "game.saveStatus.conflictMessage": "Stan na serwerze zmienił się w innej karcie lub sesji. Automatyczny zapis został zatrzymany. Lokalna kopia postępu i kopie odzyskiwania zostały zachowane. Przeładuj stronę, aby wczytać nowszy stan z serwera.",
   "app.title": "Catnip Tycoon",
   "app.loading": "Ładowanie...",
   "app.login": "Zaloguj / Zarejestruj",

@@ -12,6 +12,8 @@
   "game.saveStatus.pending": "Speichern…",
   "game.saveStatus.saved": "Gespeichert",
   "game.saveStatus.error": "Speicherfehler",
+  "game.saveStatus.conflict": "Speicherkonflikt — Seite neu laden",
+  "game.saveStatus.conflictMessage": "Der Serverstand wurde in einem anderen Tab oder einer anderen Sitzung geändert. Das automatische Speichern wurde gestoppt. Deine lokale Fortschrittskopie und die Wiederherstellungskopien bleiben erhalten. Lade die Seite neu, um den neueren Serverstand zu laden.",
   "app.title": "Catnip Tycoon",
   "app.loading": "Laden...",
   "app.login": "Anmelden / Registrieren",

@@ -35,6 +35,7 @@ const game = {
 
   // --- Initialization guard ---
   isReady: false, // gameLoop runs only after loadGame / guest init
+  saveConflict: false, // Session-only latch: reload to select the newer server state.
 
   // --- Cat Life (virtual pet, unlocked at prestige 3) ---
   catlife: null, // {hunger, lastUpdate, fedCount} — lazy-init in getCatLife()
@@ -921,6 +922,7 @@ function showProgressNotice(message, retry = false) {
 }
 
 function saveGame() {
+  if (game.saveConflict) return Promise.resolve(false);
   if (_stateTransition || !game.isReady) return _saveQueue;
   const attempt = ++_saveAttempt;
   setSaveStatus('pending');
@@ -934,12 +936,21 @@ function saveGame() {
   }
   const token = api.token;
   _saveQueue = _saveQueue.then(async () => {
+    // A previous queued request may have discovered a conflict after this
+    // snapshot was queued. Never retry it against the newer server revision.
+    if (game.saveConflict) return false;
     try {
       if (token && token === api.token) await api.saveGameState(state);
       if (attempt === _saveAttempt) setSaveStatus('saved');
       return true;
     } catch (err) {
-      if (attempt === _saveAttempt) setSaveStatus('error');
+      if (err.code === 'SAVE_CONFLICT') {
+        game.saveConflict = true;
+        setSaveStatus('conflict');
+        showProgressNotice(i18n.t('game.saveStatus.conflictMessage'), true);
+      } else if (attempt === _saveAttempt) {
+        setSaveStatus('error');
+      }
       console.error('[Game] Save failed:', err.message);
       return false;
     }

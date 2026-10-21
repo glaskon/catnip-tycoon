@@ -12,6 +12,8 @@
   "game.saveStatus.pending": "Saving…",
   "game.saveStatus.saved": "Saved",
   "game.saveStatus.error": "Save error",
+  "game.saveStatus.conflict": "Save conflict — reload the page",
+  "game.saveStatus.conflictMessage": "The server state changed in another tab or session. Autosave has been stopped. Your local progress copy and recovery copies have been kept. Reload the page to load the newer server state.",
   "app.title": "Catnip Tycoon",
   "app.loading": "Loading...",
   "app.login": "Login / Register",

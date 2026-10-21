@@ -12,6 +12,8 @@
   "game.saveStatus.pending": "Guardando…",
   "game.saveStatus.saved": "Guardado",
   "game.saveStatus.error": "Error al guardar",
+  "game.saveStatus.conflict": "Conflicto de guardado — recarga la página",
+  "game.saveStatus.conflictMessage": "El estado del servidor cambió en otra pestaña o sesión. El guardado automático se ha detenido. Se han conservado la copia local de tu progreso y las copias de recuperación. Recarga la página para cargar el estado más reciente del servidor.",
   "app.title": "Catnip Tycoon",
   "app.loading": "Cargando...",
   "app.login": "Iniciar sesión / Registrarse",

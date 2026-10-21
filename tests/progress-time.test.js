@@ -220,9 +220,96 @@ test('save status still reports pending, success and both storage/network errors
   c.api.saveGameState = async () => { throw new Error('network'); };
   assert.equal(await c.saveGame(), false);
   assert.equal(el.dataset.status, 'error');
+  assert.equal(c.game.saveConflict, false);
+  c.api.saveGameState = async () => ({});
+  assert.equal(await c.saveGame(), true);
+  assert.equal(el.dataset.status, 'saved');
   c.localStorage.setItem = () => { throw new Error('storage full'); };
   assert.equal(await c.saveGame(), false);
   assert.equal(el.dataset.status, 'error');
+});
+
+test('409 after a successful save latches conflict, drains queued saves and preserves local progress', { timeout: 2000 }, async () => {
+  const c = setup();
+  const el = { dataset: {}, textContent: '' };
+  c.document.getElementById = () => el;
+  c.console = { error() {} };
+  c.AbortSignal = AbortSignal;
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/api.js'), 'utf8'), c);
+  c.api.token = 'token';
+  c.api.revision = 7;
+  const requests = [];
+  let conflict;
+  c.fetch = async (url, options) => {
+    requests.push({ url, method: options.method, body: JSON.parse(options.body) });
+    if (requests.length === 1) return { ok: true, json: async () => ({ revision: 8 }) };
+    return new Promise(resolve => {
+      conflict = () => resolve({ ok: false, status: 409,
+        json: async () => ({ code: 'SAVE_CONFLICT', error: 'Conflict', revision: 9 }),
+      });
+    });
+  };
+  let noticeCount = 0;
+  c.showProgressNotice = (message, retry) => {
+    noticeCount++;
+    assert.equal(message, 'game.saveStatus.conflictMessage');
+    assert.equal(retry, true);
+  };
+  c.applyGameState(snapshot({ savedAt: NOW, saveOwnerId: '7',
+    daily: { count: 2 }, gacha: { totalPulls: 1 }, purchasedItems: ['test'],
+  }));
+  const recovery = JSON.stringify(snapshot());
+  for (const owner of ['guest', '7']) c.localStorage.setItem('catnip-recovery-' + owner, recovery);
+  assert.equal(await c.saveGame(), true);
+  assert.equal(el.dataset.status, 'saved');
+  assert.equal(c.api.revision, 8);
+  assert.equal(requests[0].body.expected_revision, 7);
+
+  c.game.fish = 1234;
+  const first = c.saveGame();
+  await Promise.resolve();
+  c.game.fish = 2345;
+  const queued = c.saveGame();
+  const localBefore = c.localStorage.getItem('catnip-save');
+  const gameBefore = JSON.stringify(c.game);
+  conflict();
+  assert.deepEqual(await Promise.all([first, queued]), [false, false]);
+  assert.equal(c.game.saveConflict, true);
+  assert.equal(el.dataset.status, 'conflict');
+  assert.equal(el.textContent, 'game.saveStatus.conflict');
+  assert.equal(noticeCount, 1);
+  assert.equal(c.api.revision, 8);
+  assert.equal(requests[1].body.expected_revision, 8);
+
+  for (let n = 0; n < 3; n++) assert.equal(await c.saveGame(), false);
+  assert.equal(JSON.stringify({ ...c.game, saveConflict: false }), gameBefore);
+  // Account transitions must also be able to wait for the settled queue.
+  c.beginStateTransition();
+  assert.equal(await vm.runInContext('_saveQueue', c), false);
+  c.endStateTransition();
+  assert.equal(await c.saveGame(), false);
+  assert.equal(requests.length, 2);
+  assert.ok(requests.every(r => r.url === '/api/save' && r.method === 'POST'));
+  assert.equal(el.dataset.status, 'conflict');
+  assert.equal(noticeCount, 1);
+  assert.equal(c.localStorage.getItem('catnip-save'), localBefore);
+  for (const owner of ['guest', '7']) {
+    assert.equal(c.localStorage.getItem('catnip-recovery-' + owner), recovery);
+  }
+  assert.equal(JSON.parse(localBefore).saveConflict, undefined);
+});
+
+test('all four locales have matching keys and distinct save conflict status and message', () => {
+  let keys;
+  for (const locale of ['pl', 'en', 'es', 'de']) {
+    const strings = JSON.parse(fs.readFileSync(path.join(__dirname, '../public/locales', locale + '.json'), 'utf8'));
+    const currentKeys = Object.keys(strings).sort();
+    if (keys) assert.deepEqual(currentKeys, keys, locale + ' key parity');
+    keys = currentKeys;
+    assert.ok(strings['game.saveStatus.conflict']);
+    assert.ok(strings['game.saveStatus.conflictMessage']);
+    assert.notEqual(strings['game.saveStatus.conflict'], strings['game.saveStatus.error']);
+  }
 });
 
 test('auth freezes play and autosaves before getting a token; registration adds no bonus', async () => {
