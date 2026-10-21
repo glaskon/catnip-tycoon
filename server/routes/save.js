@@ -5,6 +5,7 @@ const router = express.Router();
 const { pool } = require('../db');
 const { authMiddleware } = require('../auth');
 const { hasRealProgress } = require('../../public/js/save-progress');
+const { validateAlbumState } = require('../../public/js/album-state');
 
 /**
  * GET /api/save
@@ -67,6 +68,7 @@ const STATE_SCHEMA = {
   lastClickDate: 'str',
   catlife: 'catlife',
   daily: 'daily',
+  album: 'album',
   gacha: 'gacha',
   firstCatReward: 'strOrNull',
   cats: 'arrCats',
@@ -137,6 +139,9 @@ function validateState(s) {
         break;
       case 'catlife':
         if (!validateCatLife(v)) return false;
+        break;
+      case 'album':
+        if (!validateAlbumState(v)) return false;
         break;
       case 'daily':
         if (!validateDaily(v)) return false;

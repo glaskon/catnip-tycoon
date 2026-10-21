@@ -314,5 +314,16 @@
   "onboarding.reward": "Za pierwszego kota czeka jedna darmowa losówka kosmetyczna!",
   "onboarding.claim": "Otwórz darmową losówkę",
   "onboarding.received": "Nagroda za pierwszego kota:",
-  "onboarding.rules": "Darmowa losówka ma szanse podane poniżej, nie zmienia pity ani licznika płatnych losowań i nie daje waluty za duplikat."
+  "onboarding.rules": "Darmowa losówka ma szanse podane poniżej, nie zmienia pity ani licznika płatnych losowań i nie daje waluty za duplikat.",
+  "album.title": "Album miesiąca",
+  "album.description": "Wejdź w 10 różnych dniach miesiąca, aby zdobyć limitowaną skórkę. Tylko kosmetyk; pominięte dni nie są uzupełniane.",
+  "album.skin": "Księżycowy kot · {month}",
+  "album.unlocked": "Zdobyto skórkę miesiąca!",
+  "album.equip": "Załóż",
+  "album.visited": "Dzisiejsze wejście zapisane. Wróć jutro.",
+  "album.waiting": "Czekamy na potwierdzenie czasu online. Zebrane pieczątki pozostają.",
+  "album.calendar": "Kalendarz albumu: {zone}. To Twoja lokalna strefa z pierwszej pieczątki; pozostaje stała także w podróży.",
+  "album.history": "Poprzednie albumy",
+  "album.earned": "Zdobyto",
+  "album.missed": "Nie zdobyto"
 }

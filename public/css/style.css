@@ -969,3 +969,14 @@ html, body {
   border-radius: var(--border-radius);
 }
 #prestigeDialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+
+/* Monthly cosmetic album, alongside the existing daily rewards. */
+#albumSummary { margin: 12px 0; }
+#albumContent { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--text-muted); }
+.album-stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0; }
+.album-stamp { padding: 10px; text-align: center; border: 1px dashed var(--text-muted); border-radius: 50%; color: var(--text-muted); }
+.album-stamped { border-style: solid; border-color: var(--gold); background: var(--bg-secondary); }
+.album-swatch { display: inline-block; padding: 8px; border-radius: 50%; }
+.album-calendar { color: var(--text-secondary); font-size: 0.8rem; }
+.album-history { padding-left: 20px; }
+.album-history li { margin: 12px 0; }

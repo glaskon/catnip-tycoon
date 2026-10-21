@@ -314,5 +314,16 @@
   "onboarding.reward": "Deine erste Katze bringt dir eine kostenlose kosmetische Ziehung!",
   "onboarding.claim": "Kostenlos ziehen",
   "onboarding.received": "Belohnung für die erste Katze:",
-  "onboarding.rules": "Die kostenlose Ziehung nutzt die folgenden Chancen, ändert weder Pity noch die Anzahl bezahlter Ziehungen und gibt keine Währung für Duplikate."
+  "onboarding.rules": "Die kostenlose Ziehung nutzt die folgenden Chancen, ändert weder Pity noch die Anzahl bezahlter Ziehungen und gibt keine Währung für Duplikate.",
+  "album.title": "Monatsalbum",
+  "album.description": "Besuche das Spiel an 10 verschiedenen Tagen im Monat für einen limitierten Skin. Nur kosmetisch; verpasste Tage werden nicht nachgeholt.",
+  "album.skin": "Mondkatze · {month}",
+  "album.unlocked": "Monatsskin freigeschaltet!",
+  "album.equip": "Anziehen",
+  "album.visited": "Heutiger Besuch erfasst. Bis morgen.",
+  "album.waiting": "Warte auf die Online-Zeitprüfung. Gesammelte Stempel bleiben erhalten.",
+  "album.calendar": "Albumkalender: {zone}. Deine lokale Zone beim ersten Stempel bleibt auch auf Reisen bestehen.",
+  "album.history": "Frühere Alben",
+  "album.earned": "Erhalten",
+  "album.missed": "Nicht erhalten"
 }

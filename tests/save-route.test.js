@@ -47,6 +47,7 @@ function route() {
       if (name === '../db') return { pool: { connect: async () => client } };
       if (name === '../auth') return { authMiddleware() {} };
       if (name === '../../public/js/save-progress') return require('../public/js/save-progress');
+      if (name === '../../public/js/album-state') return require('../public/js/album-state');
       throw new Error('Unexpected dependency');
     },
   });
@@ -136,5 +137,46 @@ test('first-cat reward marker survives the save route; malformed markers are rej
   assert.equal(r.saves.get(1).game_state.firstCatReward, 'skin_black');
   for (const value of [true, 1, {}, '', 'x'.repeat(101)]) {
     assert.equal((await r.request(1, { firstCatReward: value }, 2)).code, 400);
+  }
+});
+
+test('populated album, history and monthly skin persist through the route and guest migration', async () => {
+  const c = createGame();
+  const album = { timeZone: 'Europe/Warsaw', month: '2026-11', stamps: 1,
+    lastDay: '2026-11-01', lastStampAt: Date.parse('2026-11-01T12:00:00Z'), history: { '2026-10': 10 } };
+  c.applyGameState({ album, purchasedItems: ['skin_album_2026-10'], guestMigrationId: 'album-guest' });
+  const state = JSON.parse(JSON.stringify(c.buildSaveState()));
+  const r = route();
+  assert.equal((await r.request(1, state, 0, 'album-guest')).code, 200);
+  const stored = r.saves.get(1).game_state;
+  assert.deepEqual(stored.album, album);
+  assert.deepEqual(stored.purchasedItems, ['skin_album_2026-10']);
+  const clone = createGame();
+  clone.applyGameState(stored);
+  assert.deepEqual(JSON.parse(JSON.stringify(clone.buildSaveState().album)), album);
+  // A guest with only a first stamp still has real progress to import.
+  const onlyStamp = { album, guestMigrationId: 'stamp-guest' };
+  assert.equal((await r.request(2, onlyStamp, 0, 'stamp-guest')).code, 200);
+});
+
+test('album validator rejects malformed calendars, stamps, timestamps and history; local restore is safe', async () => {
+  const album = { timeZone: 'Europe/Warsaw', month: '2026-11', stamps: 1,
+    lastDay: '2026-11-01', lastStampAt: Date.parse('2026-11-01T12:00:00Z'), history: { '2026-10': 10 } };
+  const invalid = [[], {}, { ...album, extra: 1 },
+    ...[0, -1, 11, 1.5, '1'].map(stamps => ({ ...album, stamps })),
+    ...[null, {}, 'Moon/Base', '<script>'].map(timeZone => ({ ...album, timeZone })),
+    ...['2026-13', '2026-00', '<script>'].map(month => ({ ...album, month })),
+    ...['2026-11-31', '2026-10-01', '2026-11-02'].map(lastDay => ({ ...album, lastDay })),
+    ...[NaN, Infinity, -1, 1.5, '1', 253402300800000].map(lastStampAt => ({ ...album, lastStampAt })),
+    ...[[], null, { '2026-11': 10 }, { '2026-12': 10 }, { '2026-09': 11 }, { '<script>': 1 }].map(history => ({ ...album, history })),
+  ];
+  const r = route();
+  assert.equal((await r.request(1, { album: null })).code, 200);
+  const c = createGame();
+  for (const value of invalid) {
+    assert.equal((await r.request(1, { album: value }, 1)).code, 400);
+    c.applyGameState({ album: value, fish: 42 });
+    assert.equal(c.game.album, null);
+    assert.equal(c.game.fish, 42);
   }
 });

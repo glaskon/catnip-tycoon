@@ -114,6 +114,7 @@ function drawCat() {
   if (typeof lastOwned === 'function') {
     const skinId = lastOwned('skin_');
     if (skinId && CAT_SKINS[skinId]) skin = CAT_SKINS[skinId];
+    else if (typeof albumSkinPalette === 'function') skin = albumSkinPalette(skinId) || skin;
   }
   const activeOutfit = (typeof lastOwned === 'function') ? lastOwned('outfit_') : null;
 
@@ -524,6 +525,7 @@ function render() {
   updateStats();
   renderSaveStatus();
   if (typeof renderFirstCatGoal === 'function') renderFirstCatGoal();
+  if (typeof renderAlbum === 'function') renderAlbum();
 
   // Only render the currently active panel for performance
   const activePanel = document.querySelector('.panel.active');
@@ -550,6 +552,9 @@ function render() {
       break;
     case 'panel-catlife':
       if (typeof renderCatLife === 'function') renderCatLife();
+      break;
+    case 'panel-daily':
+      if (typeof renderDaily === 'function') renderDaily();
       break;
     case 'panel-achievements':
       if (typeof renderAchievements === 'function') renderAchievements();

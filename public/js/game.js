@@ -43,6 +43,7 @@ const game = {
   catlife: null, // {hunger, lastUpdate, fedCount} — lazy-init in getCatLife()
 
   // --- Daily reward (login streak) ---
+  album: null, // Monthly stamps, calendar zone and history; cosmetics use purchasedItems.
   daily: null,    // {count, lastClaimDate} — lazy-init in getDaily()
 
   // --- Gacha (cosmetic pulls) ---
@@ -796,6 +797,7 @@ function buildSaveState() {
     activeBoosts: game.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: Math.max(0, b.expiresAt - now), maxDurationMs: b.maxDurationMs })),
     catlife: game.catlife || null,
     daily: game.daily || null,
+    album: game.album || null,
     gacha: game.gacha || null,
     firstCatReward: game.firstCatReward,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
@@ -826,6 +828,8 @@ function applyGameState(state, at = Date.now()) {
   game.guestMigrationId = typeof state.guestMigrationId === 'string' ? state.guestMigrationId : null;
   game.catlife = null;
   game.daily = null;
+  game.album = null;
+  if (typeof resetAlbumSession === 'function') resetAlbumSession();
   game.gacha = null;
   game.firstCatReward = typeof state.firstCatReward === 'string' && state.firstCatReward.length <= 100 ? state.firstCatReward : null;
   game._quantumActive = false;
@@ -863,6 +867,11 @@ function applyGameState(state, at = Date.now()) {
       count: safeNum(state.daily.count, 0, 1000000),
       lastClaimDate: typeof state.daily.lastClaimDate === 'string' && state.daily.lastClaimDate.length <= 20 ? state.daily.lastClaimDate : '',
     };
+  }
+  // Album validation is shared with the save route; malformed local data must
+  // never become markup, a calendar override, or a request rejected with 400.
+  if (typeof validateAlbumState === 'function' && state.album && validateAlbumState(state.album)) {
+    game.album = JSON.parse(JSON.stringify(state.album));
   }
   if (state.gacha && typeof state.gacha === 'object') {
     const gCounts = (state.gacha.counts && typeof state.gacha.counts === 'object' && !Array.isArray(state.gacha.counts)) ? state.gacha.counts : {};
@@ -961,6 +970,8 @@ function endStateTransition() {
   game.lastTick = Date.now();
   game.isReady = true;
   _stateTransition = false;
+  if (typeof drawCat === 'function') drawCat();
+  if (typeof refreshAlbum === 'function') refreshAlbum();
 }
 
 function showProgressNotice(message, retry = false) {

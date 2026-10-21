@@ -10,7 +10,7 @@ function hasRealProgress(state) {
     item && (item.count > 0 || item.purchased === true || item.level > 0)))) return true;
   if (['achievements', 'purchasedItems', 'activeBoosts'].some(key => Array.isArray(state[key]) && state[key].length)) return true;
   if (state.shopCounts && Object.values(state.shopCounts).some(n => n > 0)) return true;
-  return !!(state.anchoredCatId || state.preservedUpgradeId ||
+  return !!(state.album && state.album.stamps > 0 || state.anchoredCatId || state.preservedUpgradeId ||
     state.daily && (state.daily.count > 0 || state.daily.lastClaimDate) ||
     state.catlife && state.catlife.fedCount > 0 ||
     state.gacha && (state.gacha.totalPulls > 0 || state.gacha.pity > 0 ||

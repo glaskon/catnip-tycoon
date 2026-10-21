@@ -314,5 +314,16 @@
   "onboarding.reward": "¡Tu primer gato te da una tirada cosmética gratis!",
   "onboarding.claim": "Abrir tirada gratis",
   "onboarding.received": "Premio por el primer gato:",
-  "onboarding.rules": "La tirada gratis usa las probabilidades indicadas, no cambia el pity ni el total de tiradas de pago y no da moneda por duplicados."
+  "onboarding.rules": "La tirada gratis usa las probabilidades indicadas, no cambia el pity ni el total de tiradas de pago y no da moneda por duplicados.",
+  "album.title": "Álbum del mes",
+  "album.description": "Visita el juego en 10 días distintos del mes para ganar un aspecto limitado. Solo cosmético; no se recuperan días perdidos.",
+  "album.skin": "Gato lunar · {month}",
+  "album.unlocked": "¡Aspecto del mes desbloqueado!",
+  "album.equip": "Usar",
+  "album.visited": "Visita de hoy registrada. Vuelve mañana.",
+  "album.waiting": "Esperando la comprobación de hora en línea. Los sellos se conservan.",
+  "album.calendar": "Calendario del álbum: {zone}. Es tu zona local del primer sello; permanece fija al viajar.",
+  "album.history": "Álbumes anteriores",
+  "album.earned": "Conseguido",
+  "album.missed": "No conseguido"
 }
