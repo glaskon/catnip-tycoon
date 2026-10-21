@@ -58,6 +58,7 @@ const STATE_SCHEMA = {
   speedMultiplier: 'num', elixirs: 'num', clickCount: 'int',
   luckyCatnipCount: 'int', dailyClicks: 'int', totalCatsBought: 'int',
   offlineTimeMinutes: 'num',
+  activeBoosts: 'arrBoosts',
   anchoredCatId: 'strOrNull', preservedUpgradeId: 'strOrNull',
   lastClickDate: 'str',
   catlife: 'catlife',
@@ -134,6 +135,17 @@ function validateState(s) {
         break;
       case 'gacha':
         if (!validateGacha(v)) return false;
+        break;
+      case 'arrBoosts':
+        if (!Array.isArray(v) || v.length > 20) return false;
+        for (const e of v) {
+          if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
+          const keys = Object.keys(e);
+          if (keys.length !== 3 || !keys.every(key => key === 'kind' || key === 'mult' || key === 'remainingMs')) return false;
+          if (!['speed', 'click', 'production'].includes(e.kind)) return false;
+          if (typeof e.mult !== 'number' || !Number.isFinite(e.mult) || e.mult <= 0 || e.mult > 1000) return false;
+          if (typeof e.remainingMs !== 'number' || !Number.isFinite(e.remainingMs) || e.remainingMs < 0 || e.remainingMs > 10000000) return false;
+        }
         break;
       case 'arrStrings':
         if (!Array.isArray(v) || v.length > MAX_ARRAY_LEN || !v.every(isId)) return false;
