@@ -137,7 +137,7 @@ function renderGacha() {
   const results = window._gachaResults || null;
   let countsSig = '';
   for (const p of GACHA_POOL) countsSig += (g.counts[p.id] || 0) + ':';
-  const sig = [i18n.currentLang, Math.floor(game.catnip), g.pity, g.totalPulls, countsSig, results ? results.length : 0].join('|');
+  const sig = [i18n.currentLang, game.catnip >= GACHA_SINGLE_COST, game.catnip >= GACHA_MULTI_COST, g.pity, g.totalPulls, countsSig, results ? results.length : 0].join('|');
   if (sig === _gachaSig) return;
   _gachaSig = sig;
 

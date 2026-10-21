@@ -553,6 +553,9 @@ function render() {
     case 'panel-shop':
       if (typeof renderShop === 'function') renderShop();
       break;
+    case 'panel-gacha':
+      if (typeof renderGacha === 'function') renderGacha();
+      break;
     case 'panel-catlife':
       if (typeof renderCatLife === 'function') renderCatLife();
       break;
