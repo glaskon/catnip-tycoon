@@ -58,7 +58,7 @@ function isId(v) {
 const STATE_SCHEMA = {
   savedAt: 'int', saveOwnerId: 'strOrNull', guestMigrationId: 'strOrNull',
   fish: 'num', fishPerClick: 'num', clickScalingBaseline: 'num', fishPerSecond: 'num', catnip: 'num',
-  diamonds: 'num', totalFishEarned: 'num', prestigeCount: 'int',
+  diamonds: 'num', totalFishEarned: 'num', prestigeCount: 'int', prestigeMultiplier: 'prestigeMultiplier',
   speedMultiplier: 'num', elixirs: 'num', clickCount: 'int',
   luckyCatnipCount: 'int', dailyClicks: 'int', totalCatsBought: 'int',
   offlineTimeMinutes: 'num',
@@ -119,6 +119,9 @@ function validateState(s) {
     if (!(k in STATE_SCHEMA)) return false; // unknown key
     const v = s[k];
     switch (STATE_SCHEMA[k]) {
+      case 'prestigeMultiplier':
+        if (!isFiniteNum(v) || v < 1 || v > 3) return false;
+        break;
       case 'num':
         if (!isFiniteNum(v)) return false;
         break;

@@ -119,3 +119,12 @@ test('a save without a row can be imported; normal saves retain its migration re
   assert.equal(r.saves.get(1).game_state.guestMigrationId, 'guest-3');
   assert.equal((await r.request(1, { fish: 10, guestMigrationId: 'guest-4' }, 2, 'guest-4')).code, 409);
 });
+
+test('permanent prestige multiplier round-trips through the save route with bounded validation', async () => {
+  const r = route();
+  for (const invalid of [0, -1, 3.1, Infinity, NaN, '2']) {
+    assert.equal((await r.request(1, { prestigeMultiplier: invalid })).code, 400);
+  }
+  assert.equal((await r.request(1, { prestigeMultiplier: 3 })).code, 200);
+  assert.equal(r.saves.get(1).game_state.prestigeMultiplier, 3);
+});

@@ -10,6 +10,7 @@ const game = {
   diamonds: 0,
   totalFishEarned: 0,
   prestigeCount: 0,
+  prestigeMultiplier: 1, // Earned +0.1 per reset, capped at 3; legacy saves start at 1.
   speedMultiplier: 1,
   productionMultiplier: 1,
   activeBoosts: [],
@@ -220,7 +221,7 @@ function getBaseCatProduction() {
 
 // Recalculate fish per second from all owned cats.
 function recalcFPS(now = Date.now()) {
-  let base = getBaseCatProduction();
+  let base = getBaseCatProduction() * game.prestigeMultiplier;
 
   // Prestige tier bonuses
   if (game.prestigeCount >= 5) base *= 2; // Tier 3: Divine artifacts
@@ -580,6 +581,10 @@ function applyUpgradeEffect(upgradeId) {
 // Prestige system
 // ============================================================
 
+function getNextPrestigeMultiplier() {
+  return Math.min(3, Math.round((game.prestigeMultiplier + 0.1) * 10) / 10);
+}
+
 // Calculate how many fish are needed for next prestige
 function getCatnipNeeded() {
   // First prestige: 10M fish (Łukasz, 2026-08-28). Scales with prestige count:
@@ -619,14 +624,6 @@ function prestige() {
     cashbackCatnip = Math.floor(game.totalFishEarned * 0.1 / 100);
   }
 
-  // Save stackable upgrade levels before reset
-  const oldStackableLevels = {};
-  for (const upg of game.upgrades) {
-    if (upg.type === 'stackable' && upg.level > 0) {
-      oldStackableLevels[upg.id] = upg.level;
-    }
-  }
-
   // Reset everything except catnip, diamonds, prestigeCount
   game.fish = 0;
   game.fishPerClick = 1;
@@ -641,35 +638,32 @@ function prestige() {
   game.catnip = oldCatnip + catnipGain + cashbackCatnip;
   game.diamonds = oldDiamonds;
   game.prestigeCount = oldPrestigeCount;
+  game.prestigeMultiplier = getNextPrestigeMultiplier();
   game.elixirs = oldElixirs;
 
   // Reset cats — keep anchored cat if Tier 6 (35+)
   game.cats.forEach(c => {
     if (oldAnchoredCatId && c.id === oldAnchoredCatId && game.prestigeCount >= 35) {
-      // Keep this cat's count through prestige
+      c.count = Math.min(1, c.count);
     } else {
       c.count = 0;
     }
   });
 
-  // Reset upgrades — keep preserved upgrade if Tier 8 (75+), keep stackable levels
+  // Catnip purchases are permanent; only the selected fish upgrade survives.
+  // Diamond purchases retain their existing persistence.
   game.upgrades.forEach(u => {
-    if (oldPreservedUpgradeId && u.id === oldPreservedUpgradeId && game.prestigeCount >= 75) {
-      u.purchased = true;
-      applyUpgradeEffect(u.id);
-    } else if (u.type === 'stackable' && oldStackableLevels[u.id]) {
-      // Stackable upgrades keep their levels through prestige
-      u.level = oldStackableLevels[u.id];
-    } else if (u.type === 'once') {
-      u.purchased = false;
-    }
-    // Stackable upgrades with no level stay at 0 (no-op)
+    const preserved = oldPreservedUpgradeId === u.id && game.prestigeCount >= 75;
+    if (u.currency === 'catnip' || u.currency === 'diamonds' || preserved) return;
+    u.purchased = false;
+    u.level = 0;
   });
 
   // Reset quantum karma state
   game._quantumTimer = 0;
   game._quantumActive = false;
 
+  recomputeBoostedValues();
   recalcFPS();
 
   if (typeof checkAchievements === 'function') checkAchievements();
@@ -693,7 +687,7 @@ function getCatnipShrineRate() {
   if (hasUpgrade('superkarmnik')) {
     catnipRate *= 4;
   }
-  return catnipRate;
+  return catnipRate * game.prestigeMultiplier;
 }
 
 // Main game loop: runs every 100ms
@@ -782,6 +776,7 @@ function buildSaveState() {
     diamonds: game.diamonds,
     totalFishEarned: game.totalFishEarned,
     prestigeCount: game.prestigeCount,
+    prestigeMultiplier: game.prestigeMultiplier,
     speedMultiplier: 1,
     elixirs: game.elixirs,
     anchoredCatId: game.anchoredCatId,
@@ -836,6 +831,8 @@ function applyGameState(state, at = Date.now()) {
   game.diamonds = safeNum(state.diamonds, 0);
   game.totalFishEarned = safeNum(state.totalFishEarned, 0);
   game.prestigeCount = safeNum(state.prestigeCount, 0);
+  // No retroactive production jump on old saves, including offline settlement.
+  game.prestigeMultiplier = Math.max(1, safeNum(state.prestigeMultiplier, 1, 3));
   game.speedMultiplier = safeNum(state.speedMultiplier, 1);
   game.elixirs = safeNum(state.elixirs, 0);
   game.anchoredCatId = typeof state.anchoredCatId === 'string' ? state.anchoredCatId : null;
