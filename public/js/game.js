@@ -424,77 +424,112 @@ function clickCat(event) {
   render();
 }
 
-// Buy a cat by index in the cats array
-function buyCat(index) {
-  const cat = game.cats[index];
-  if (!cat || !cat.unlocked) {
-    showDebug('buyCat: cat null or locked (idx=' + index + ')');
-    return false;
+// Quotes and purchases share the same gates and each item's currentCost getter.
+function getPurchaseItem(kind, index) {
+  return kind === 'cat' ? game.cats[index] : kind === 'upgrade' ? game.upgrades[index] : null;
+}
+
+function isPurchaseUnlocked(kind, index) {
+  const item = getPurchaseItem(kind, index);
+  if (!item) return false;
+  if (item.requiresPrestige && game.prestigeCount < item.requiresPrestige) return false;
+  if (item.requireCat && !game.cats.some(c => c.count > 0 &&
+      (item.requireCat === true || c.id === item.requireCat))) return false;
+  const owned = kind === 'cat' ? item.count : item.type === 'stackable' ? item.level : Number(item.purchased);
+  if (item.maxOwned !== undefined && owned >= item.maxOwned) return false;
+  if (kind === 'cat') return item.unlocked && (index === 0 || game.cats[index - 1].count > 0);
+  return item.type === 'stackable' || !item.purchased;
+}
+
+function getPurchaseQuote(kind, index, quantity = 1) {
+  const item = getPurchaseItem(kind, index);
+  const quote = { count: 0, cost: 0, currency: item ? item.currency : 'fish', affordable: false };
+  if (!isPurchaseUnlocked(kind, index) || ![1, 10, 'max'].includes(quantity)) return quote;
+  const field = kind === 'cat' ? 'count' : item.type === 'stackable' ? 'level' : 'purchased';
+  const original = item[field];
+  const limit = quantity === 'max' ? Infinity : quantity;
+  try {
+    while (quote.count < limit && isPurchaseUnlocked(kind, index)) {
+      const cost = kind === 'cat' || item.type === 'stackable' ? item.currentCost : item.cost;
+      if (!Number.isFinite(cost) || cost <= 0 || !Number.isFinite(quote.cost + cost)) break;
+      if (quantity === 'max' && !canAfford(quote.cost + cost, quote.currency)) break;
+      quote.cost += cost;
+      quote.count++;
+      item[field] = field === 'purchased' ? true : item[field] + 1;
+    }
+  } finally {
+    item[field] = original;
   }
+  quote.affordable = quote.count > 0 && (quantity === 'max' || quote.count === quantity) && canAfford(quote.cost, quote.currency);
+  return quote;
+}
 
-  const cost = cat.currentCost;
-  const currency = cat.currency || 'fish'; // Kot Feniks uses catnip
+// Actual passive fish/s, including speed and the autoclicker.
+function getFishIncomeRate() {
+  return (game.fishPerSecond + (hasUpgrade('autoclicker') ? calculateClickValue() : 0)) * game.speedMultiplier;
+}
 
-  showDebug('buyCat: ' + cat.id + ' cost=' + cost + ' currency=' + currency + ' fish=' + game.fish.toFixed(0) + ' catnip=' + game.catnip.toFixed(0));
+function getEconomyRates() {
+  return { fish: getFishIncomeRate(), click: calculateClickValue(), catnip: getCatnipShrineRate() * game.speedMultiplier };
+}
 
-  if (!canAfford(cost, currency)) {
-    showDebug('buyCat: cannot afford ' + cost + ' ' + currency);
-    return false;
+// Synchronous, reversible simulation: no rewards, purchases or timers run here.
+// Reuse live calculations, including global bonuses from wizard/phoenix cats.
+function previewPurchase(kind, index, count = 1, now = Date.now()) {
+  recomputeBoostedValues(now, true);
+  recalcFPS(now);
+  const before = getEconomyRates();
+  const item = getPurchaseItem(kind, index);
+  if (!item || count < 1 || !isPurchaseUnlocked(kind, index)) return { before, after: before };
+  const field = kind === 'cat' ? 'count' : item.type === 'stackable' ? 'level' : 'purchased';
+  const original = item[field];
+  const fps = game.fishPerSecond;
+  try {
+    item[field] = field === 'purchased' ? true : original + count;
+    recalcFPS(now);
+    return { before, after: getEconomyRates() };
+  } finally {
+    item[field] = original;
+    game.fishPerSecond = fps;
   }
+}
 
-  cat.count++;
-  game.totalCatsBought++;
-  showDebug('buyCat: BOUGHT! ' + cat.id + ' #' + cat.count);
-  sound.buy();
-
-  if (currency === 'catnip') {
-    game.catnip -= cost;
+function buyPurchase(kind, index, quantity = 1) {
+  const quote = getPurchaseQuote(kind, index, quantity);
+  if (!quote.affordable) return false;
+  const item = getPurchaseItem(kind, index);
+  game[quote.currency] -= quote.cost;
+  if (kind === 'cat') {
+    item.count += quote.count;
+    game.totalCatsBought += quote.count;
   } else {
-    game.fish -= cost;
+    if (item.type === 'stackable') item.level += quote.count;
+    else item.purchased = true;
+    applyUpgradeEffect(item.id);
   }
-
+  sound.buy();
+  recomputeBoostedValues();
   recalcFPS();
-
+  if (quantity !== 1 && typeof showToast === 'function') {
+    showToast(i18n.t('economy.receipt', 'Bought {count} × {name}; spent {cost}')
+      .replace('{count}', quote.count).replace('{name}', i18n.t(item.nameKey, item.id))
+      .replace('{cost}', String(quote.cost) + ' ' + purchaseCurrencyIcon(quote.currency)));
+  }
   if (typeof checkAchievements === 'function') checkAchievements();
   render();
   return true;
 }
 
-// Buy an upgrade by index
-function buyUpgrade(index) {
-  const upg = game.upgrades[index];
-  if (!upg) return false;
+function purchaseCurrencyIcon(currency) {
+  return currency === 'catnip' ? '🌿' : currency === 'diamonds' ? '💎' : '🐟';
+}
 
-  // Once-type: can't buy if already purchased
-  if (upg.type === 'once' && upg.purchased) return false;
+function buyCat(index, quantity = 1) {
+  return buyPurchase('cat', index, quantity);
+}
 
-  // Determine cost
-  const cost = upg.type === 'stackable' ? upg.currentCost : upg.cost;
-  const currency = upg.currency;
-
-  // Check if player can afford
-  if (!canAfford(cost, currency)) return false;
-
-  // Deduct cost
-  if (currency === 'fish') game.fish -= cost;
-  else if (currency === 'catnip') game.catnip -= cost;
-  else if (currency === 'diamonds') game.diamonds -= cost;
-
-  // Apply purchase
-  if (upg.type === 'stackable') {
-    upg.level++;
-  } else {
-    upg.purchased = true;
-  }
-
-  // Apply upgrade effect
-  applyUpgradeEffect(upg.id);
-
-  sound.buy();
-  recalcFPS();
-  if (typeof checkAchievements === 'function') checkAchievements();
-  render();
-  return true;
+function buyUpgrade(index, quantity = 1) {
+  return buyPurchase('upgrade', index, quantity);
 }
 
 // Apply the effect of a purchased upgrade
@@ -991,7 +1026,7 @@ function restoreWithOffline(state, fallbackTime, now = Date.now()) {
     recalcFPS((from + to) / 2);
     segments.push({
       from: (from - start) / 1000, to: (to - start) / 1000,
-      fish: (game.fishPerSecond + (hasUpgrade('autoclicker') ? calculateClickValue() : 0)) * game.speedMultiplier,
+      fish: getFishIncomeRate(),
       catnip: getCatnipShrineRate() * game.speedMultiplier,
       elixirs: typeof getElixirRate === 'function' ? getElixirRate() : 0,
     });

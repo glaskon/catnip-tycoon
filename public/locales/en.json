@@ -291,5 +291,14 @@
   "shop.item.skin_galaxy": "Galaxy Skin",
   "shop.itemDesc.skin_galaxy": "A cat from the nebula — gacha exclusive",
   "shop.item.effect_aurora": "Aurora Effect",
-  "shop.itemDesc.effect_aurora": "Aurora particles on click — gacha exclusive"
+  "shop.itemDesc.effect_aurora": "Aurora particles on click — gacha exclusive",
+  "economy.receipt": "Bought {count} × {name}; spent {cost}",
+  "economy.fishRate": "fish/s",
+  "economy.clickRate": "fish/click",
+  "economy.catnipRate": "catnip/s",
+  "economy.specialEffect": "Conditional benefit — see description",
+  "economy.locked": "Locked or limit reached",
+  "economy.nextUnit": "Next purchase",
+  "economy.affordable": "What you can afford now",
+  "economy.noneAffordable": "Keep earning to afford your next purchase."
 }

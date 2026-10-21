@@ -291,5 +291,14 @@
   "shop.item.skin_galaxy": "Piel Estelar",
   "shop.itemDesc.skin_galaxy": "Un gato de nebulosa — exclusivo gacha",
   "shop.item.effect_aurora": "Efecto Aurora",
-  "shop.itemDesc.effect_aurora": "Partículas de aurora al hacer clic — exclusivo gacha"
+  "shop.itemDesc.effect_aurora": "Partículas de aurora al hacer clic — exclusivo gacha",
+  "economy.receipt": "Compraste {count} × {name}; gastaste {cost}",
+  "economy.fishRate": "peces/s",
+  "economy.clickRate": "peces/clic",
+  "economy.catnipRate": "hierba gatera/s",
+  "economy.specialEffect": "Beneficio condicional — ver descripción",
+  "economy.locked": "Bloqueado o límite alcanzado",
+  "economy.nextUnit": "Próxima compra",
+  "economy.affordable": "Lo que puedes comprar ahora",
+  "economy.noneAffordable": "Sigue ganando para tu próxima compra."
 }

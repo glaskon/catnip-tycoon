@@ -291,5 +291,14 @@
   "shop.item.skin_galaxy": "Galaxie-Skin",
   "shop.itemDesc.skin_galaxy": "Ein Kater aus dem Nebel — Gacha-Exklusiv",
   "shop.item.effect_aurora": "Aurora-Effekt",
-  "shop.itemDesc.effect_aurora": "Aurora-Partikel beim Klicken — Gacha-Exklusiv"
+  "shop.itemDesc.effect_aurora": "Aurora-Partikel beim Klicken — Gacha-Exklusiv",
+  "economy.receipt": "{count} × {name} gekauft; {cost} ausgegeben",
+  "economy.fishRate": "Fische/s",
+  "economy.clickRate": "Fische/Klick",
+  "economy.catnipRate": "Katzenminze/s",
+  "economy.specialEffect": "Bedingter Vorteil — siehe Beschreibung",
+  "economy.locked": "Gesperrt oder Limit erreicht",
+  "economy.nextUnit": "Nächster Kauf",
+  "economy.affordable": "Das kannst du dir jetzt leisten",
+  "economy.noneAffordable": "Sammle weiter für deinen nächsten Kauf."
 }

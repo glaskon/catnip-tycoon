@@ -324,7 +324,7 @@ function setStat(id, value) {
 // Update the stats display
 function updateStats() {
   setStat('fishCount', formatNumber(game.fish));
-  setStat('fishPerSec', formatNumber(game.fishPerSecond));
+  setStat('fishPerSec', formatRate(getFishIncomeRate()));
   setStat('catnipCount', formatNumber(Math.floor(game.catnip)));
   setStat('diamondCount', formatNumber(Math.floor(game.diamonds)));
   renderTopBar();
@@ -368,7 +368,7 @@ function updateStats() {
 // Update the top bar resource display
 function renderTopBar() {
   setStat('resFish', formatNumber(game.fish));
-  setStat('resFps', formatNumber(game.fishPerSecond));
+  setStat('resFps', formatRate(getFishIncomeRate()));
   setStat('resCatnip', formatNumber(Math.floor(game.catnip)));
   setStat('resDiamonds', formatNumber(Math.floor(game.diamonds)));
 }
@@ -408,127 +408,118 @@ function restoreCardHover(container, selector, cls) {
   }
 }
 
-// Render cats panel
-let _catsRenderSig = null;
-function renderCats() {
-  const container = document.getElementById('catList');
-  if (!container) return;
-  initCardHoverTracking(container);
+// Two decimals keep small click/rate gains visible; large values stay compact.
+function formatRate(value) {
+  return Math.abs(value) < 1000 ? String(Number(value.toFixed(2))) : formatNumber(value);
+}
 
-  // Skip full DOM rebuild when nothing changed. Rebuilding innerHTML every 100ms
-  // tick replaced buy buttons mid-click (mousedown on old node, mouseup on new
-  // node = no click event), so purchases needed several clicks.
-  let sig = i18n.currentLang;
-  for (let i = 0; i < game.cats.length; i++) {
-    // Progressive reveal: a cat is only visible after the previous cat has
-    // been bought at least once (first cat always visible). Resets with
-    // prestige — part of the new run.
-    const visible = i === 0 || game.cats[i - 1].count > 0;
-    if (!visible) { sig += '|x'; continue; }
-    const c = game.cats[i];
-    const cost = c.currentCost;
-    const afford = canAfford(cost, c.currency);
-    sig += '|' + c.count + ':' + (afford ? 1 : 0) + ':' + (c.unlocked ? 1 : 0);
+function purchaseGainText(preview) {
+  const labels = { fish: 'economy.fishRate', click: 'economy.clickRate', catnip: 'economy.catnipRate' };
+  const parts = [];
+  for (const key of Object.keys(labels)) {
+    const delta = preview.after[key] - preview.before[key];
+    if (delta > 0) parts.push(`+${formatRate(delta)} ${i18n.t(labels[key])} (${formatRate(preview.before[key])} → ${formatRate(preview.after[key])})`);
   }
-  if (sig === _catsRenderSig) return;
-  _catsRenderSig = sig;
+  return parts.join(' · ') || i18n.t('economy.specialEffect');
+}
 
-  let html = '';
-  for (let i = 0; i < game.cats.length; i++) {
-    const visible = i === 0 || game.cats[i - 1].count > 0;
-    if (!visible) continue;
-    const cat = game.cats[i];
-    const name = i18n.t(cat.nameKey, cat.id);
-    const cost = cat.currentCost;
-    const canAfford = window.canAfford(cost, cat.currency);
-    const isUnlocked = cat.unlocked;
-    const prestigeReq = CAT_DEFINITIONS[i].requiresPrestige;
+function purchaseButtons(kind, index) {
+  const item = getPurchaseItem(kind, index);
+  const quantities = kind === 'cat' || item.type === 'stackable' ? [1, 10, 'max'] : [1];
+  return '<div class="purchase-buttons">' + quantities.map(quantity => {
+    const quote = getPurchaseQuote(kind, index, quantity);
+    const label = quantity === 'max' ? `max (${quote.count})` : `×${quantity}`;
+    const argument = quantity === 'max' ? "'max'" : quantity;
+    const action = kind === 'cat' ? 'buyCat' : 'buyUpgrade';
+    const gain = quote.count ? purchaseGainText(previewPurchase(kind, index, quote.count)) : '';
+    return `<button class="btn btn-primary btn-sm" onclick="${action}(${index}, ${argument})"
+      title="${escapeHtml(gain)}" ${quote.affordable ? '' : 'disabled'}>${label}<small>${purchaseCurrencyIcon(quote.currency)} ${formatNumber(quote.cost)}</small></button>`;
+  }).join('') + '</div>';
+}
 
-    html += `<div class="card${isUnlocked ? '' : ' locked'}">`;
-    html += `<div class="card-info">`;
-    html += `<div class="card-name">🐱 ${name}</div>`;
-    html += `<div class="card-desc">${i18n.t('cats.production')}: ${cat.baseProduction}/s</div>`;
-    html += `<div class="card-count">${i18n.t('cats.owned')}: ${cat.count} (${formatNumber(cat.production)}/s)</div>`;
-    html += `</div>`;
-
-    if (!isUnlocked) {
-      html += `<div class="card-cost">🔒 ${prestigeReq ? `Prestige ${prestigeReq}` : ''}</div>`;
-    } else {
-      const costIcon = cat.currency === 'catnip' ? '🌿' : '🐟';
-      html += `<div class="card-cost">${costIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary card-btn" 
-                onclick="buyCat(${i})" 
-                ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;
-    }
-
-    html += `</div>`;
-  }
+// Only replace changed content: stable buttons must survive ordinary income ticks.
+function writePurchaseCards(container, html) {
+  if (container._purchaseHTML === html) return;
+  container._purchaseHTML = html;
   container.innerHTML = html;
   restoreCardHover(container);
 }
 
-// Render upgrades panel
-let _upgradesRenderSig = null;
+function renderCats() {
+  const container = document.getElementById('catList');
+  if (!container) return;
+  initCardHoverTracking(container);
+  let html = '';
+  game.cats.forEach((cat, index) => {
+    if (index > 0 && game.cats[index - 1].count === 0) return;
+    const unlocked = isPurchaseUnlocked('cat', index);
+    const gain = unlocked ? purchaseGainText(previewPurchase('cat', index)) : i18n.t('economy.locked');
+    html += `<div id="purchase-cat-${index}" tabindex="-1" class="card purchase-card${unlocked ? '' : ' locked'}">
+      <div class="card-info"><div class="card-name">🐱 ${i18n.t(cat.nameKey, cat.id)}</div>
+      <div class="card-desc">${i18n.t('economy.nextUnit')}: ${gain}</div>
+      <div class="card-count">${i18n.t('cats.owned')}: ${cat.count}</div></div>
+      ${unlocked ? purchaseButtons('cat', index) : `<div class="card-cost">🔒 ${cat.requiresPrestige ? 'Prestige ' + cat.requiresPrestige : i18n.t('economy.locked')}</div>`}</div>`;
+  });
+  writePurchaseCards(container, html);
+}
+
 function renderUpgrades() {
   const container = document.getElementById('upgradeList');
   if (!container) return;
   initCardHoverTracking(container);
-
-  // Same click-swallowing fix as renderCats: only rebuild when state changes
-  let sig = i18n.currentLang;
-  for (let i = 0; i < game.upgrades.length; i++) {
-    const u = game.upgrades[i];
-    const isStackable = u.type === 'stackable';
-    const cost = isStackable ? u.currentCost : u.cost;
-    const afford = canAfford(cost, u.currency);
-    sig += '|' + (isStackable ? u.level : (u.purchased ? 1 : 0)) + ':' + (afford ? 1 : 0);
-  }
-  if (sig === _upgradesRenderSig) return;
-  _upgradesRenderSig = sig;
-
   let html = '';
-  for (let i = 0; i < game.upgrades.length; i++) {
-    const upg = game.upgrades[i];
-    const name = i18n.t(upg.nameKey, upg.id);
-    const desc = i18n.t(upg.descKey, '');
-    const currencyIcon = upg.currency === 'fish' ? '🐟' : upg.currency === 'catnip' ? '🌿' : '💎';
+  game.upgrades.forEach((upg, index) => {
+    const owned = upg.type === 'once' && upg.purchased;
+    const unlocked = isPurchaseUnlocked('upgrade', index);
+    html += `<div id="purchase-upgrade-${index}" tabindex="-1" class="card purchase-card${owned ? ' unlocked' : ''}">
+      <div class="card-info"><div class="card-name">⬆️ ${i18n.t(upg.nameKey, upg.id)}${upg.type === 'stackable' ? ' · ' + upg.level : ''}</div>
+      <div class="card-desc">${i18n.t(upg.descKey, '')}</div>
+      ${unlocked ? `<div class="card-count">${i18n.t('economy.nextUnit')}: ${purchaseGainText(previewPurchase('upgrade', index))}</div>` : ''}</div>
+      ${owned ? `<div class="card-cost">✅ ${i18n.t('upgrades.purchased')}</div>` : unlocked ? purchaseButtons('upgrade', index) : `<div class="card-cost">🔒 ${i18n.t('economy.locked')}</div>`}</div>`;
+  });
+  writePurchaseCards(container, html);
+}
 
-    const isStackable = upg.type === 'stackable';
-    const isPurchased = isStackable ? upg.level > 0 : upg.purchased;
-    const cost = isStackable ? upg.currentCost : upg.cost;
-    const canAfford = window.canAfford(cost, upg.currency);
-
-    let cardClass = '';
-    if (isStackable && upg.level > 0) cardClass = 'unlocked';
-    else if (isPurchased) cardClass = 'unlocked';
-    
-    html += `<div class="card${cardClass}">`;
-    html += `<div class="card-info">`;
-    html += `<div class="card-name">⬆️ ${name}</div>`;
-    html += `<div class="card-desc">${desc}</div>`;
-    html += `</div>`;
-
-    if (isStackable) {
-      if (upg.level > 0) {
-        html += `<div class="card-cost" style="color: var(--cat-orange);">Level ${upg.level}</div>`;
-      }
-      html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary card-btn" 
-                onclick="buyUpgrade(${i})" 
-                ${!canAfford ? 'disabled' : ''}>Level ${upg.level + 1}</button>`;
-    } else if (isPurchased) {
-      html += `<div class="card-cost" style="color: var(--success)">✅ ${i18n.t('upgrades.purchased')}</div>`;
-    } else {
-      html += `<div class="card-cost">${currencyIcon} ${formatNumber(cost)}</div>`;
-      html += `<button class="btn btn-primary card-btn" 
-                onclick="buyUpgrade(${i})" 
-                ${!canAfford ? 'disabled' : ''}>${i18n.t('cats.buy')}</button>`;
-    }
-
-    html += `</div>`;
+// One affordable option per category, cheapest first within that currency.
+function getAffordableSuggestions() {
+  const candidates = [];
+  for (const kind of ['cat', 'upgrade']) {
+    const items = kind === 'cat' ? game.cats : game.upgrades;
+    items.forEach((item, index) => {
+      if (item.currency === 'diamonds') return;
+      const quote = getPurchaseQuote(kind, index);
+      if (!quote.affordable) return;
+      const preview = previewPurchase(kind, index);
+      const improvesRate = Object.keys(preview.before).some(key => preview.after[key] > preview.before[key]);
+      // Conditional benefits stay in the card description, with no invented rates.
+      const usefulSpecial = ['karmnik', 'clickcrit', 'quantumkarma', 'catnipclick', 'prestigeBoost'].includes(item.id) ||
+        (item.id === 'elixirmastery' && game.prestigeCount >= 10);
+      if (!improvesRate && !usefulSpecial) return;
+      candidates.push({ kind, index, item, quote, preview, category: kind === 'cat' ? 'cat' : item.currency });
+    });
   }
-  container.innerHTML = html;
-  restoreCardHover(container);
+  return ['cat', 'fish', 'catnip'].map(category => candidates.filter(c => c.category === category)
+    .sort((a, b) => a.quote.cost - b.quote.cost)[0]).filter(Boolean);
+}
+
+function renderPurchaseSuggestions() {
+  const container = document.getElementById('purchaseSuggestions');
+  if (!container) return;
+  const suggestions = getAffordableSuggestions();
+  const html = `<h3>${i18n.t('economy.affordable')}</h3>` + (suggestions.length ? suggestions.map(s =>
+    `<button class="btn btn-secondary purchase-suggestion" onclick="focusPurchase('${s.kind}', ${s.index})">
+      ${i18n.t(s.item.nameKey, s.item.id)} · ${purchaseCurrencyIcon(s.quote.currency)} ${formatNumber(s.quote.cost)}
+      <small>${purchaseGainText(s.preview)}</small></button>`).join('') : `<p>${i18n.t('economy.noneAffordable')}</p>`);
+  writePurchaseCards(container, html);
+}
+
+function focusPurchase(kind, index) {
+  switchPanel(kind === 'cat' ? 'cats' : 'upgrades');
+  const card = document.getElementById(`purchase-${kind}-${index}`);
+  if (card) {
+    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    card.focus({ preventScroll: true });
+  }
 }
 
 // Main render function - updates all visible UI
@@ -541,6 +532,9 @@ function render() {
   if (!activePanel) return;
 
   switch (activePanel.id) {
+    case 'panel-main':
+      renderPurchaseSuggestions();
+      break;
     case 'panel-cats':
       renderCats();
       break;

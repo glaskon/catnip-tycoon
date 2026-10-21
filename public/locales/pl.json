@@ -291,5 +291,14 @@
   "shop.item.skin_galaxy": "Galaktyczna Skóra",
   "shop.itemDesc.skin_galaxy": "Kot z galaktycznej mgławicy — exclusive gacha",
   "shop.item.effect_aurora": "Efekt Aurory",
-  "shop.itemDesc.effect_aurora": "Cząsteczki aurory przy kliknięciu — exclusive gacha"
+  "shop.itemDesc.effect_aurora": "Cząsteczki aurory przy kliknięciu — exclusive gacha",
+  "economy.receipt": "Kupiono {count} × {name}; wydano {cost}",
+  "economy.fishRate": "ryby/s",
+  "economy.clickRate": "ryby/klik",
+  "economy.catnipRate": "catnip/s",
+  "economy.specialEffect": "Korzyść warunkowa — zobacz opis",
+  "economy.locked": "Blokada lub osiągnięty limit",
+  "economy.nextUnit": "Następny zakup",
+  "economy.affordable": "Na co cię teraz stać",
+  "economy.noneAffordable": "Zbieraj dalej, aby odblokować kolejny zakup."
 }
