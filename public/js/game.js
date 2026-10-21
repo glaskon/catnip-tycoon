@@ -130,13 +130,14 @@ function initGame() {
     if (def.type === 'stackable') {
       return {
         ...def,
+        purchased: false,
         level: 0,
         get currentCost() {
           return Math.floor(def.baseCost * Math.pow(def.costGrowth, this.level));
         },
       };
     }
-    return { ...def, purchased: false };
+    return { ...def, purchased: false, level: 0 };
   });
 
   game.baseFishPerClick = 1;
@@ -750,7 +751,11 @@ function safeNum(v, fallback, max) {
 }
 
 function applyGameState(state) {
-  if (!state || state._fresh) return false;
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return false;
+
+  // A save replaces the collections, including omitted entries. Keep getters
+  // and definitions from initGame(), never from untrusted serialized objects.
+  initGame();
 
   game.fish = safeNum(state.fish, 0);
   game.fishPerClick = safeNum(state.fishPerClick, 1);
@@ -823,7 +828,7 @@ function applyGameState(state) {
 
   // Migration: catnipclick used to be once-type (+0.1 catnip/click).
   // It is now stackable (Lucky Catnip Click) — old purchases become level 1.
-  const savedCatnipClick = (state.upgrades || []).find(u => u.id === 'catnipclick');
+  const savedCatnipClick = savedUpgrades.find(u => u && u.id === 'catnipclick');
   if (savedCatnipClick && savedCatnipClick.purchased) {
     const catnipClickUpg = game.upgrades.find(u => u.id === 'catnipclick');
     if (catnipClickUpg && catnipClickUpg.type === 'stackable' && catnipClickUpg.level === 0) {
@@ -833,19 +838,10 @@ function applyGameState(state) {
 
   // Restore achievements from save (without re-awarding rewards)
   const savedAchievements = Array.isArray(state.achievements) ? state.achievements : [];
-  const validAchievements = [];
-  for (const achId of savedAchievements) {
-    if (typeof achId !== 'string') continue;
-    const ach = ACHIEVEMENTS.find(a => a.id === achId);
-    if (ach) {
-      ach.earned = true;
-      validAchievements.push(achId);
-    }
-  }
-  if (validAchievements.length > 0) {
-    // Sync to localStorage too
-    localStorage.setItem('catnip-achievements', JSON.stringify(validAchievements));
-  }
+  const earnedIds = new Set(savedAchievements);
+  for (const ach of ACHIEVEMENTS) ach.earned = earnedIds.has(ach.id);
+  const validAchievements = ACHIEVEMENTS.filter(a => a.earned).map(a => a.id);
+  localStorage.setItem('catnip-achievements', JSON.stringify(validAchievements));
 
   // Restore shop purchased items
   const savedPurchasedItems = Array.isArray(state.purchasedItems) ? state.purchasedItems : [];
