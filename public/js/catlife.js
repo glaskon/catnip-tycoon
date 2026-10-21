@@ -33,8 +33,15 @@ function getCatLifeMood() {
 }
 
 // Called from recalcFPS — happy pet = +10% production
+let _catLifeProductionMood = null;
 function catLifeProductionMultiplier() {
-  return getCatLifeMood() === 'happy' ? 1.1 : 1;
+  _catLifeProductionMood = getCatLifeMood();
+  return _catLifeProductionMood === 'happy' ? 1.1 : 1;
+}
+
+// Check before each income tick, even when the Cat Life panel is closed.
+function refreshCatLifeProduction() {
+  if (getCatLifeMood() !== _catLifeProductionMood) recalcFPS();
 }
 
 function feedCatLife() {
@@ -107,5 +114,6 @@ function renderCatLife() {
 
 window.getCatLifeMood = getCatLifeMood;
 window.catLifeProductionMultiplier = catLifeProductionMultiplier;
+window.refreshCatLifeProduction = refreshCatLifeProduction;
 window.feedCatLife = feedCatLife;
 window.renderCatLife = renderCatLife;

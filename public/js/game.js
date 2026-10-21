@@ -641,6 +641,8 @@ function gameLoop() {
   const delta = (now - game.lastTick) / 1000; // Convert to seconds
   game.lastTick = now;
 
+  if (typeof refreshCatLifeProduction === 'function') refreshCatLifeProduction();
+
   // Auto income from cats (fish per second)
   if (game.fishPerSecond > 0) {
     const income = game.fishPerSecond * delta * game.speedMultiplier;
