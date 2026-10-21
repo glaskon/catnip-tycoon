@@ -587,9 +587,9 @@ function getNextPrestigeMultiplier() {
 
 // Calculate how many fish are needed for next prestige
 function getCatnipNeeded() {
-  // First prestige: 10M fish (Łukasz, 2026-08-28). Scales with prestige count:
-  // 10M, 20M, 30M...
-  return 10000000 * (game.prestigeCount + 1);
+  const next = game.prestigeCount + 1;
+  // Both branches meet at next=21 (20 completed prestiges).
+  return 10000000 * next * (next > 21 ? next / 21 : 1);
 }
 
 // Calculate how much catnip the player would earn from prestige

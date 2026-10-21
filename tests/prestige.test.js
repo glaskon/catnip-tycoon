@@ -118,3 +118,32 @@ test('old saves load without production or balance jumps and keep migration acro
     assert.equal(c.game.prestigeMultiplier, 1);
   }
 });
+
+test('requirements are monotone, meet at 21 and grow faster than linear after 20 completed resets', () => {
+  const c = setup();
+  const requirements = [];
+  for (let completed = 0; completed < 100; completed++) {
+    c.game.prestigeCount = completed;
+    requirements.push(c.getCatnipNeeded());
+  }
+  for (let i = 0; i < 21; i++) assert.equal(requirements[i], 1e7 * (i + 1));
+  assert.equal(requirements[20] - requirements[19], 1e7);
+  close(requirements[21], 1e7 * 22 * (22 / 21));
+  for (let i = 1; i < requirements.length; i++) {
+    assert.ok(requirements[i] > requirements[i - 1]);
+    if (i > 20) assert.ok(requirements[i] - requirements[i - 1] > 1e7);
+    if (i > 21) assert.ok(requirements[i] - requirements[i - 1] > requirements[i - 1] - requirements[i - 2]);
+  }
+  assert.ok(requirements[24] > 250000000 * 1.19);
+});
+
+test('prestige checks the quadratic threshold, and refuses without changing state below it', () => {
+  const c = setup();
+  c.game.prestigeCount = 24;
+  c.game.totalFishEarned = c.getCatnipNeeded() - 1;
+  const before = JSON.stringify(c.game);
+  assert.equal(c.prestige(), false);
+  assert.equal(JSON.stringify(c.game), before);
+  reset(c);
+  assert.equal(c.game.prestigeCount, 25);
+});

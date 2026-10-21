@@ -39,3 +39,37 @@ Nowy zapisany `prestigeMultiplier`: +0,1/reset, limit ×3. `recalcFPS()` mnoży 
 Ulepszenia za catnip zostają, rybne (również poziomowe) resetują się poza jednym wskazanym. Ulepszenia za diamenty zachowują dotychczasowe działanie. Kotwica zostawia jedną posiadaną sztukę; nie tworzy nieposiadanego kota.
 
 Decyzja migracyjna: brak nowego pola oznacza ×1, bez zmiany zasobów i bieżących stawek przy wczytaniu. Gracz ze starym zapisem zbiera nowy bonus przez następnych 20 resetów. Natychmiastowe przyznanie bonusu za wcześniejsze resety przeczyłoby wymaganiu braku skoku wartości.
+
+## Commit 2 — progi i czas rundy
+
+`n` to numer wykonywanego resetu: do n=21 wymaganie wynosi 10 mln × n; później 10 mln × n²/21. To dokładnie warunek „powyżej 20 ukończonych prestiży”. Przejście 200→210 mln jest liniowe; następny przyrost wynosi 20,476 mln. Reset 25 wymaga 297,619 mln, czyli o 19,05% więcej niż liniowe 250 mln.
+
+Czas to oszacowanie dla średniej bazowej produkcji kotów 10 000 ryb/s (np. równowartość 10 sfinksów), mnożonej przez bonusy posiadane PRZED resetem. Bez klikania, zwierzaka i boosterów. To porównanie przy tej samej średniej bazie, nie symulacja zakupów od zera ani obietnica czasu gry. Nagroda na tym etapie nadal jest catnipem.
+
+| Reset | Wymaganie (mln) | Nagroda (catnip) | Nowy mnożnik po | Łączny mnożnik ryb po | Czas (min) |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 10.000 | 31 | 1.10 | 1.10 | 16.7 |
+| 2 | 20.000 | 44 | 1.20 | 1.20 | 30.3 |
+| 3 | 30.000 | 54 | 1.30 | 1.30 | 41.7 |
+| 4 | 40.000 | 63 | 1.40 | 1.40 | 51.3 |
+| 5 | 50.000 | 70 | 1.50 | 3.00 | 59.5 |
+| 6 | 60.000 | 77 | 1.60 | 3.20 | 33.3 |
+| 7 | 70.000 | 83 | 1.70 | 3.40 | 36.5 |
+| 8 | 80.000 | 89 | 1.80 | 3.60 | 39.2 |
+| 9 | 90.000 | 94 | 1.90 | 3.80 | 41.7 |
+| 10 | 100.000 | 100 | 2.00 | 4.20 | 43.9 |
+| 11 | 110.000 | 104 | 2.10 | 4.41 | 43.7 |
+| 12 | 120.000 | 109 | 2.20 | 4.62 | 45.4 |
+| 13 | 130.000 | 114 | 2.30 | 4.83 | 46.9 |
+| 14 | 140.000 | 118 | 2.40 | 5.04 | 48.3 |
+| 15 | 150.000 | 122 | 2.50 | 5.25 | 49.6 |
+| 16 | 160.000 | 126 | 2.60 | 5.46 | 50.8 |
+| 17 | 170.000 | 130 | 2.70 | 5.67 | 51.9 |
+| 18 | 180.000 | 134 | 2.80 | 5.88 | 52.9 |
+| 19 | 190.000 | 137 | 2.90 | 6.09 | 53.9 |
+| 20 | 200.000 | 141 | 3.00 | 6.60 | 54.7 |
+| 21 | 210.000 | 144 | 3.00 | 6.60 | 53.0 |
+| 22 | 230.476 | 151 | 3.00 | 6.60 | 58.2 |
+| 23 | 251.905 | 158 | 3.00 | 6.60 | 63.6 |
+| 24 | 274.286 | 165 | 3.00 | 6.60 | 69.3 |
+| 25 | 297.619 | 172 | 3.00 | 6.60 | 75.2 |
