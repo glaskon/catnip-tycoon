@@ -46,6 +46,7 @@ const game = {
   daily: null,    // {count, lastClaimDate} — lazy-init in getDaily()
 
   // --- Gacha (cosmetic pulls) ---
+  firstCatReward: null, // Cosmetic id from the one-time first-cat pull; survives prestige.
   gacha: null,    // {totalPulls, pity, counts} — lazy-init in getGacha()
 
   // --- Collections ---
@@ -796,6 +797,7 @@ function buildSaveState() {
     catlife: game.catlife || null,
     daily: game.daily || null,
     gacha: game.gacha || null,
+    firstCatReward: game.firstCatReward,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
       id: u.id,
@@ -825,6 +827,7 @@ function applyGameState(state, at = Date.now()) {
   game.catlife = null;
   game.daily = null;
   game.gacha = null;
+  game.firstCatReward = typeof state.firstCatReward === 'string' && state.firstCatReward.length <= 100 ? state.firstCatReward : null;
   game._quantumActive = false;
   game._quantumTimer = 0;
 

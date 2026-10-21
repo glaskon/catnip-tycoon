@@ -308,5 +308,11 @@
   "prestige.chosenUpgrade": "Wskazane ulepszenie",
   "prestige.keptUpgrades": "Wszystkie zachowane ulepszenia",
   "prestige.none": "Brak",
-  "prestige.cancel": "Anuluj"
+  "prestige.cancel": "Anuluj",
+  "onboarding.goal": "Klikaj, żeby uzbierać 15 ryb na pierwszego kota.",
+  "onboarding.firstCat": "Pierwszy kot",
+  "onboarding.reward": "Za pierwszego kota czeka jedna darmowa losówka kosmetyczna!",
+  "onboarding.claim": "Otwórz darmową losówkę",
+  "onboarding.received": "Nagroda za pierwszego kota:",
+  "onboarding.rules": "Darmowa losówka ma szanse podane poniżej, nie zmienia pity ani licznika płatnych losowań i nie daje waluty za duplikat."
 }

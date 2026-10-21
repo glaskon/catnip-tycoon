@@ -34,6 +34,46 @@ function getGacha() {
   return game.gacha;
 }
 
+// Eligibility is derived from lifetime progress, including legacy saves.
+function hasFirstCat() {
+  return game.totalCatsBought > 0 || game.cats.some(cat => cat.count > 0) ||
+    ACHIEVEMENTS.some(a => a.id === 'first_cat' && a.earned);
+}
+
+function claimFirstCatReward() {
+  if (!game.isReady || game.saveConflict || !hasFirstCat() || game.firstCatReward) return null;
+  // A separate roll with the public base rates. It neither consumes nor resets
+  // paid pity, and duplicates give no currency for this free cosmetic reward.
+  const rarity = rollRarity(false);
+  const item = pickPoolItem(rarity);
+  const isNew = !hasItem(item.id);
+  game.firstCatReward = item.id;
+  const g = getGacha();
+  g.counts[item.id] = (g.counts[item.id] || 0) + 1;
+  if (isNew) purchasedItems.push(item.id);
+  savePurchasedItems();
+  applyShopItem(item.id);
+  window._gachaResults = [{ id: item.id, rarity, isNew, refunded: 0 }];
+  saveGame();
+  showToast('🎁 ' + i18n.t('onboarding.received') + ' ' + gachaItemName(item.id));
+  render();
+  renderGacha();
+  return item.id;
+}
+
+function firstCatRewardHTML() {
+  if (!hasFirstCat() || game.firstCatReward) return '';
+  return `<p>🎁 ${i18n.t('onboarding.reward')} <button class="btn btn-primary" onclick="claimFirstCatReward()">${i18n.t('onboarding.claim')}</button></p>`;
+}
+
+function renderFirstCatGoal() {
+  const container = document.getElementById('firstCatGoal');
+  if (!container) return;
+  const html = hasFirstCat() ? firstCatRewardHTML() :
+    `<p>🐾 ${i18n.t('onboarding.goal')} <button class="btn btn-secondary btn-sm" onclick="focusPurchase('cat', 0)">${i18n.t('onboarding.firstCat')}</button></p>`;
+  if (container.innerHTML !== html) container.innerHTML = html;
+}
+
 // Roll a rarity. forceRareOrBetter = pity roll (normalized within rare+ mass).
 function rollRarity(forceRareOrBetter) {
   const roll = Math.random() * 100;
@@ -137,11 +177,15 @@ function renderGacha() {
   const results = window._gachaResults || null;
   let countsSig = '';
   for (const p of GACHA_POOL) countsSig += (g.counts[p.id] || 0) + ':';
-  const sig = [i18n.currentLang, game.catnip >= GACHA_SINGLE_COST, game.catnip >= GACHA_MULTI_COST, g.pity, g.totalPulls, countsSig, results ? results.length : 0].join('|');
+  const sig = [i18n.currentLang, game.catnip >= GACHA_SINGLE_COST, game.catnip >= GACHA_MULTI_COST, g.pity, g.totalPulls, game.firstCatReward, hasFirstCat(), countsSig, results ? results.length : 0].join('|');
   if (sig === _gachaSig) return;
   _gachaSig = sig;
 
-  let html = '';
+  let html = firstCatRewardHTML();
+  if (game.firstCatReward && GACHA_POOL.some(p => p.id === game.firstCatReward)) {
+    html += `<p role="status">🎁 ${i18n.t('onboarding.received')} ${gachaItemName(game.firstCatReward)}</p>`;
+  }
+  html += `<p>${i18n.t('onboarding.rules')}</p>`;
 
   // Pull buttons
   html += `<div style="text-align: center; padding: 8px 0 4px;">`;

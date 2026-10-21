@@ -308,5 +308,11 @@
   "prestige.chosenUpgrade": "Chosen upgrade",
   "prestige.keptUpgrades": "All kept upgrades",
   "prestige.none": "None",
-  "prestige.cancel": "Cancel"
+  "prestige.cancel": "Cancel",
+  "onboarding.goal": "Click to save 15 fish for your first cat.",
+  "onboarding.firstCat": "First cat",
+  "onboarding.reward": "Your first cat earned you one free cosmetic pull!",
+  "onboarding.claim": "Open free pull",
+  "onboarding.received": "First-cat reward:",
+  "onboarding.rules": "The free pull uses the rates below, does not change paid pity or total pulls, and gives no currency for duplicates."
 }

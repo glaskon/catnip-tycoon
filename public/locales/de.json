@@ -308,5 +308,11 @@
   "prestige.chosenUpgrade": "Gewählte Verbesserung",
   "prestige.keptUpgrades": "Alle behaltenen Verbesserungen",
   "prestige.none": "Keine",
-  "prestige.cancel": "Abbrechen"
+  "prestige.cancel": "Abbrechen",
+  "onboarding.goal": "Klicke, um 15 Fische für deine erste Katze zu sammeln.",
+  "onboarding.firstCat": "Erste Katze",
+  "onboarding.reward": "Deine erste Katze bringt dir eine kostenlose kosmetische Ziehung!",
+  "onboarding.claim": "Kostenlos ziehen",
+  "onboarding.received": "Belohnung für die erste Katze:",
+  "onboarding.rules": "Die kostenlose Ziehung nutzt die folgenden Chancen, ändert weder Pity noch die Anzahl bezahlter Ziehungen und gibt keine Währung für Duplikate."
 }

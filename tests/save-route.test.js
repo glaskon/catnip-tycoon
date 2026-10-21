@@ -128,3 +128,13 @@ test('permanent prestige multiplier round-trips through the save route with boun
   assert.equal((await r.request(1, { prestigeMultiplier: 3 })).code, 200);
   assert.equal(r.saves.get(1).game_state.prestigeMultiplier, 3);
 });
+
+test('first-cat reward marker survives the save route; malformed markers are rejected', async () => {
+  const r = route();
+  assert.equal((await r.request(1, { firstCatReward: null })).code, 200);
+  assert.equal((await r.request(1, { firstCatReward: 'skin_black' }, 1)).code, 200);
+  assert.equal(r.saves.get(1).game_state.firstCatReward, 'skin_black');
+  for (const value of [true, 1, {}, '', 'x'.repeat(101)]) {
+    assert.equal((await r.request(1, { firstCatReward: value }, 2)).code, 400);
+  }
+});

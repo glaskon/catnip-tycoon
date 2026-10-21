@@ -308,5 +308,11 @@
   "prestige.chosenUpgrade": "Mejora elegida",
   "prestige.keptUpgrades": "Todas las mejoras conservadas",
   "prestige.none": "Ninguno",
-  "prestige.cancel": "Cancelar"
+  "prestige.cancel": "Cancelar",
+  "onboarding.goal": "Haz clic para reunir 15 peces para tu primer gato.",
+  "onboarding.firstCat": "Primer gato",
+  "onboarding.reward": "¡Tu primer gato te da una tirada cosmética gratis!",
+  "onboarding.claim": "Abrir tirada gratis",
+  "onboarding.received": "Premio por el primer gato:",
+  "onboarding.rules": "La tirada gratis usa las probabilidades indicadas, no cambia el pity ni el total de tiradas de pago y no da moneda por duplicados."
 }

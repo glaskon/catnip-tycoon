@@ -523,6 +523,7 @@ function focusPurchase(kind, index) {
 function render() {
   updateStats();
   renderSaveStatus();
+  if (typeof renderFirstCatGoal === 'function') renderFirstCatGoal();
 
   // Only render the currently active panel for performance
   const activePanel = document.querySelector('.panel.active');

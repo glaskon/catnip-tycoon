@@ -68,6 +68,7 @@ const STATE_SCHEMA = {
   catlife: 'catlife',
   daily: 'daily',
   gacha: 'gacha',
+  firstCatReward: 'strOrNull',
   cats: 'arrCats',
   upgrades: 'arrUpgrades',
   achievements: 'arrStrings',
