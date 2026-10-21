@@ -116,3 +116,76 @@ test('receipt escapes names, shows one anchored cat and updates when retained le
   const receipt = c.prestigeSettlementHTML(c.getPrestigeSettlement());
   assert.ok(!receipt.includes('<img'));
 });
+
+function setupLivePanel(activePanel = { id: 'panel-prestige' }) {
+  const c = setup();
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/render.js'), 'utf8'), c);
+  c.document.querySelector = () => activePanel;
+  c.game.isReady = true;
+  c.now = Date.now();
+  c.Date = class extends Date { static now() { return c.now; } };
+  c.game.lastTick = c.now;
+  c.tick = () => { c.now += 1000; c.gameLoop(); };
+  const panel = c.document.getElementById('prestigeContent');
+  let html = '';
+  c.panelWrites = 0;
+  Object.defineProperty(panel, 'innerHTML', {
+    get: () => html,
+    set: value => { html = value; c.panelWrites++; },
+  });
+  return c;
+}
+
+test('live ticks enable prestige at the threshold, refresh the receipt and still require two clicks', () => {
+  const c = setupLivePanel();
+  const panel = c.document.getElementById('prestigeContent');
+  const button = () => panel.innerHTML.match(/<button id="prestigeOpen"[^>]*>/)[0];
+  c.game.totalFishEarned = c.getCatnipNeeded() - 2;
+  c.game.fishPerSecond = 1;
+  c.render();
+  assert.match(button(), /disabled/);
+  c.tick();
+  assert.match(button(), /disabled/);
+  assert.equal(c.panelWrites, 1); // Same receipt: preserve the button DOM.
+  c.tick();
+  assert.doesNotMatch(button(), /disabled/);
+  assert.equal(c.panelWrites, 2);
+  c.game.totalFishEarned = 4e7;
+  c.tick();
+  assert.match(panel.innerHTML, /\+63/);
+  assert.equal(c.panelWrites, 3);
+  c.tick();
+  assert.equal(c.panelWrites, 3);
+  c.confirmPrestige();
+  assert.equal(c.game.prestigeCount, 0);
+  assert.match(button(), /onclick="armPrestige\(\)"/);
+  c.armPrestige();
+  assert.equal(c.game.prestigeCount, 0);
+  assert.equal(c.document.getElementById('prestigeDialog').open, true);
+  c.tick();
+  assert.equal(c.document.getElementById('prestigeDialog').open, true);
+  c.confirmPrestige();
+  assert.equal(c.game.prestigeCount, 1);
+  assert.equal(c.game.fish, 63);
+  assert.equal(c.saves, 1);
+  c.tick();
+  assert.match(button(), /disabled/);
+});
+
+test('common render refreshes prestige even without an active panel and skips unchanged DOM', () => {
+  const c = setupLivePanel(null);
+  const panel = c.document.getElementById('prestigeContent');
+  c.game.totalFishEarned = 0;
+  c.tick();
+  assert.match(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
+  c.tick();
+  assert.equal(c.panelWrites, 1);
+  c.game.totalFishEarned = c.getCatnipNeeded();
+  c.tick();
+  assert.match(panel.innerHTML, /\+31/);
+  assert.doesNotMatch(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
+  assert.equal(c.panelWrites, 2);
+  c.game.totalFishEarned = 0;
+  c.tick();
+  assert.match(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
+});

@@ -526,6 +526,7 @@ function render() {
   renderSaveStatus();
   if (typeof renderFirstCatGoal === 'function') renderFirstCatGoal();
   if (typeof renderAlbum === 'function') renderAlbum();
+  if (typeof renderPrestigePanel === 'function') renderPrestigePanel();
 
   // Only render the currently active panel for performance
   const activePanel = document.querySelector('.panel.active');
@@ -540,9 +541,6 @@ function render() {
       break;
     case 'panel-upgrades':
       renderUpgrades();
-      break;
-    case 'panel-prestige':
-      if (typeof renderPrestigePanel === 'function') renderPrestigePanel();
       break;
     case 'panel-shop':
       if (typeof renderShop === 'function') renderShop();
