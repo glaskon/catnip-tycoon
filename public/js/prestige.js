@@ -133,7 +133,7 @@ function setPreservedUpgrade(upgradeId) {
 // --- Render the prestige panel with progress and tier info ---
 
 // Coarse render signature: only rebuild the panel when something STRUCTURAL
-// changed. Hot numbers (fish counter, progress bar, balances, cashback) are
+// changed. Hot numbers (fish counter, progress bar and balances) are
 // updated in place by updateStats() every tick — rebuilding the whole DOM
 // every 100ms replaced the prestige button under the cursor (swallowed
 // clicks, "have to click many times").
@@ -151,16 +151,15 @@ function renderPrestigePanel() {
   const sig = [
     i18n.currentLang,
     canPrestige ? 1 : 0,
-    Math.floor(reward),
+    JSON.stringify(getPrestigeSettlement()),
     game.prestigeCount,
     game.totalFishEarned > 0 ? 1 : 0,
-    Math.floor(game.totalFishEarned * 0.1 / 100) > 0 ? 1 : 0,
+    game.prestigeMultiplier,
     game.anchoredCatId || '',
     game.preservedUpgradeId || '',
     (elixirFloor >= 3 ? 1 : 0) + (elixirFloor >= 5 ? 1 : 0) + (elixirFloor >= 10 ? 1 : 0),
     game.cats.map(c => c.count > 0 ? 1 : 0).join(''),
     game.upgrades.map(u => (u.purchased || u.id === game.preservedUpgradeId) ? 1 : 0).join(''),
-    _prestigeArmed ? 1 : 0, // confirm state must force button rebuild
   ].join('|');
   if (sig === _prestigeRenderSig) return;
   _prestigeRenderSig = sig;
@@ -180,29 +179,10 @@ function renderPrestigePanel() {
   html += `🐟 ${formatNumber(game.totalFishEarned)} / ${formatNumber(needed)} ${i18n.t('prestige.needed')}`;
   html += `</p>`;
 
-  // Reward info
-  html += `<div style="margin: 16px 0; padding: 12px; background: var(--bg-tertiary); border-radius: var(--border-radius);">`;
-  html += `<p style="font-size: 0.9rem;">${i18n.t('prestige.gain')}: <b style="color: var(--gold);">${i18n.t('prestige.rewardCatnip', '🌿 {n} catnip').replace('{n}', formatNumber(reward))}</b></p>`;
-
-  // Tier 7: Catnip cashback
-  if (game.prestigeCount >= 50) {
-    const cashback = Math.floor(game.totalFishEarned * 0.1 / 100);
-    if (cashback > 0) {
-      html += `<p id="prestigeCashbackLine" style="font-size: 0.8rem; color: var(--cat-orange);">${i18n.t('prestige.cashback', '🐟 Cat Grace: +🌿 {n} cashback!').replace('{n}', formatNumber(cashback))}</p>`;
-    }
-  }
-
-  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.resetsNote', 'resets: fish, cats, upgrades')}</p>`;
-  html += `<p style="font-size: 0.75rem; color: var(--text-muted);">${i18n.t('prestige.keptNote', '✅ Kept: catnip, diamonds, prestige tiers')}</p>`;
+  html += `<div style="margin:16px 0;padding:12px;background:var(--bg-tertiary);border-radius:var(--border-radius)">`;
+  html += prestigeSettlementHTML(getPrestigeSettlement());
   html += `</div>`;
-
-  // Prestige button — 2-click confirmation (destructive action)
-  if (_prestigeArmed) {
-    html += `<button class="btn btn-danger" onclick="armPrestige()">⚠️ ${i18n.t('prestige.confirm', 'Are you sure? Click again')}</button>`;
-  } else {
-    html += `<button class="btn btn-warning" onclick="armPrestige()" ${!canPrestige ? 'disabled' : ''}>`;
-    html += `✨ ${i18n.t('prestige.perform')}</button>`;
-  }
+  html += `<button id="prestigeOpen" class="btn btn-warning" onclick="armPrestige()" ${!canPrestige ? 'disabled' : ''}>✨ ${i18n.t('prestige.perform')}</button>`;
 
   if (!canPrestige && game.totalFishEarned > 0) {
     html += `<p id="prestigeNeedMore" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">`;
@@ -325,33 +305,76 @@ function renderPrestigePanel() {
   container.innerHTML = html;
 }
 
-// Two-click confirmation for prestige (destructive reset).
-// 1st click arms the button ("Are you sure? Click again"), 2nd click within
-// 5s executes. Auto-disarms after 5s. (Incident 2026-08-28: 3 accidental
-// prestiges during testing.)
-let _prestigeArmed = false;
-let _prestigeArmTimer = null;
-
-function armPrestige() {
-  if (_prestigeArmed) {
-    _prestigeArmed = false;
-    if (_prestigeArmTimer) clearTimeout(_prestigeArmTimer);
-    _prestigeArmTimer = null;
-    performPrestige();
-    return;
-  }
-  const needed = getCatnipNeeded();
-  if (game.totalFishEarned < needed) return;
-  _prestigeArmed = true;
-  renderPrestigePanel();
-  _prestigeArmTimer = setTimeout(() => {
-    _prestigeArmed = false;
-    _prestigeArmTimer = null;
-    renderPrestigePanel();
-  }, 5000);
+// One receipt, shared by the panel and confirmation popup.
+function prestigeSettlementHTML(receipt) {
+  const t = key => escapeHtml(i18n.t('prestige.' + key));
+  const name = (collection, id) => {
+    const item = collection.find(item => item.id === id);
+    return item ? escapeHtml(i18n.t(item.nameKey, item.id)) : t('none');
+  };
+  const upgrades = receipt.upgrades.map(u => name(game.upgrades, u.id) + (u.level ? ` ×${u.level}` : '')).join(', ') || t('none');
+  return `<h3>${t('gain')}</h3><ul style="padding-left:20px;line-height:1.7">
+    <li>🐟 ${t('rewardFish')}: +${receipt.fish}</li>
+    <li>🌿 ${t('catnipLabel')}: +${receipt.catnip}</li>
+    <li>${t('permanentMultiplier')}: ×${receipt.multiplier.toFixed(2)} (+${Math.round((receipt.multiplier - 1) * 100)}%)</li>
+    <li>${t('fishMultiplier')}: ×${receipt.fishMultiplierBefore.toFixed(2)} → ×${receipt.fishMultiplierAfter.toFixed(2)}</li>
+    <li>🐱 ${t('keptCat')}: ${receipt.catId ? '1 × ' : ''}${name(game.cats, receipt.catId)}</li>
+    <li>${t('chosenUpgrade')}: ${name(game.upgrades, receipt.preservedUpgradeId)}</li>
+    <li>${t('keptUpgrades')}: ${upgrades}</li>
+  </ul><p>${t('resetsNote')}</p><p>${t('keptNote')}</p>`;
 }
 
-// Wrapper function to call prestige and show feedback
+// First click opens the complete receipt; a separate second click confirms it.
+// Preserve the five-second disarm window and never execute an unseen receipt.
+let _prestigeArmed = false;
+let _prestigeArmTimer = null;
+let _prestigeReceipt = null;
+let _prestigeReturnFocus = null;
+
+function cancelPrestige() {
+  _prestigeArmed = false;
+  _prestigeReceipt = null;
+  if (_prestigeArmTimer) clearTimeout(_prestigeArmTimer);
+  _prestigeArmTimer = null;
+  const dialog = document.getElementById('prestigeDialog');
+  if (dialog && dialog.open) dialog.close();
+  if (_prestigeReturnFocus) {
+    const target = _prestigeReturnFocus.isConnected ? _prestigeReturnFocus : document.getElementById('prestigeOpen');
+    if (target) target.focus();
+  }
+  _prestigeReturnFocus = null;
+}
+
+function armPrestige() {
+  if (game.totalFishEarned < getCatnipNeeded()) return;
+  const dialog = document.getElementById('prestigeDialog');
+  if (!dialog) return;
+  if (!_prestigeArmed) _prestigeReturnFocus = document.activeElement;
+  _prestigeArmed = true;
+  _prestigeReceipt = getPrestigeSettlement();
+  document.getElementById('prestigeReceipt').innerHTML = prestigeSettlementHTML(_prestigeReceipt);
+  document.getElementById('prestigeConfirm').textContent = i18n.t('prestige.confirm');
+  document.getElementById('prestigeCancel').textContent = i18n.t('prestige.cancel');
+  if (!dialog.open) dialog.showModal();
+  document.getElementById('prestigeCancel').focus();
+  if (_prestigeArmTimer) clearTimeout(_prestigeArmTimer);
+  _prestigeArmTimer = setTimeout(cancelPrestige, 5000);
+}
+
+function confirmPrestige() {
+  const dialog = document.getElementById('prestigeDialog');
+  if (!_prestigeArmed || !dialog || !dialog.open) return;
+  if (game.totalFishEarned < getCatnipNeeded()) { cancelPrestige(); return; }
+  if (JSON.stringify(_prestigeReceipt) !== JSON.stringify(getPrestigeSettlement())) {
+    // Production or purchases changed the payout: show the new receipt first.
+    armPrestige();
+    return;
+  }
+  cancelPrestige();
+  performPrestige();
+}
+
+// Wrapper function to call prestige and show feedback.
 function performPrestige() {
   if (prestige()) {
     showToast(i18n.t('prestige.completeToast', '✨ Prestige complete!'));

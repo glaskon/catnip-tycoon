@@ -219,23 +219,14 @@ function getBaseCatProduction() {
   return base;
 }
 
+// Permanent prestige factors shared by production and the reset receipt.
+function getPrestigeFishMultiplier(count = game.prestigeCount, multiplier = game.prestigeMultiplier) {
+  return multiplier * (count >= 5 ? 2 : 1) * (1 + Math.floor(count / 10) * 0.05) * (count >= 100 ? 100 : 1);
+}
+
 // Recalculate fish per second from all owned cats.
 function recalcFPS(now = Date.now()) {
-  let base = getBaseCatProduction() * game.prestigeMultiplier;
-
-  // Prestige tier bonuses
-  if (game.prestigeCount >= 5) base *= 2; // Tier 3: Divine artifacts
-
-  // Every 10 prestige levels: cumulative +5% fish/s (Tier 4+)
-  if (game.prestigeCount >= 10) {
-    const tierBonus = 1 + (Math.floor(game.prestigeCount / 10) * 0.05);
-    base *= tierBonus;
-  }
-
-  // Kot Bogini (Tier 9): ×100 at 100 prestige
-  if (game.prestigeCount >= 100) {
-    base *= 100;
-  }
+  let base = getBaseCatProduction() * getPrestigeFishMultiplier();
 
   // Elixir production boost — handled via activeBoosts (recomputeBoostedValues)
 
@@ -592,40 +583,55 @@ function getCatnipNeeded() {
   return 10000000 * next * (next > 21 ? next / 21 : 1);
 }
 
-// Calculate how much catnip the player would earn from prestige
+// Fish awarded at reset; catnip is proportional to this reward, never run earnings.
 function calculatePrestigeReward() {
-  let catnipGain = Math.floor(Math.sqrt(game.totalFishEarned) / 100);
-  // Upgrade: Feeder gives 2x catnip
-  if (hasUpgrade('karmnik')) catnipGain *= 2;
-  // Upgrade: PrestigeBoost gives +25%
-  if (hasUpgrade('prestigeBoost')) catnipGain = Math.floor(catnipGain * 1.25);
-  return catnipGain;
+  return Math.floor(Math.sqrt(game.totalFishEarned) / 100);
 }
 
-// Perform prestige: reset progress, earn catnip
+function keepsPrestigeUpgrade(upgrade, nextCount = game.prestigeCount + 1) {
+  return upgrade.currency === 'catnip' || upgrade.currency === 'diamonds' ||
+    (upgrade.id === game.preservedUpgradeId && nextCount >= 75);
+}
+
+// Read-only receipt: both the preview and the reset use this exact calculation.
+function getPrestigeSettlement() {
+  const fish = calculatePrestigeReward();
+  let catnip = fish; // 1:1 base exchange, comparable to shrine income in a round.
+  if (hasUpgrade('karmnik')) catnip *= 2;
+  if (hasUpgrade('prestigeBoost')) catnip = Math.floor(catnip * 1.25);
+  // Cat Grace remains a tier reward, with a bounded +25% instead of F/1000.
+  if (game.prestigeCount >= 50) catnip = Math.floor(catnip * 1.25);
+  const nextCount = game.prestigeCount + 1;
+  const multiplier = getNextPrestigeMultiplier();
+  const cat = game.cats.find(c => c.id === game.anchoredCatId && c.count > 0 && nextCount >= 35);
+  return {
+    nextCount, fish, catnip, multiplier,
+    fishMultiplierBefore: getPrestigeFishMultiplier(),
+    fishMultiplierAfter: getPrestigeFishMultiplier(nextCount, multiplier),
+    catId: cat ? cat.id : null,
+    upgrades: game.upgrades.filter(u => hasUpgrade(u.id) && keepsPrestigeUpgrade(u, nextCount))
+      .map(u => ({ id: u.id, level: u.level, purchased: u.purchased })),
+    preservedUpgradeId: game.preservedUpgradeId && nextCount >= 75 && hasUpgrade(game.preservedUpgradeId)
+      ? game.preservedUpgradeId : null,
+  };
+}
+
+// Perform prestige: reset the round and grant the unified settlement
 function prestige() {
   const needed = getCatnipNeeded();
   if (game.totalFishEarned < needed) return false;
 
-  const catnipGain = calculatePrestigeReward();
-  if (catnipGain <= 0) return false;
+  const settlement = getPrestigeSettlement();
+  if (settlement.fish <= 0) return false;
 
   // Save what persists through prestige
   const oldCatnip = game.catnip;
   const oldDiamonds = game.diamonds;
   const oldPrestigeCount = game.prestigeCount + 1;
   const oldElixirs = game.elixirs;
-  const oldAnchoredCatId = game.anchoredCatId;
-  const oldPreservedUpgradeId = game.preservedUpgradeId;
-
-  // Tier 7 (50+): cashback — 1 catnip per full 1000 fish earned this run
-  let cashbackCatnip = 0;
-  if (game.prestigeCount >= 50) {
-    cashbackCatnip = Math.floor(game.totalFishEarned * 0.1 / 100);
-  }
 
   // Reset everything except catnip, diamonds, prestigeCount
-  game.fish = 0;
+  game.fish = settlement.fish;
   game.fishPerClick = 1;
   game.baseFishPerClick = 1;
   game.clickScalingBaseline = 0;
@@ -635,15 +641,15 @@ function prestige() {
   game.totalFishEarned = 0;
   game.clickCount = 0;
   game.totalCatsBought = 0;
-  game.catnip = oldCatnip + catnipGain + cashbackCatnip;
+  game.catnip = oldCatnip + settlement.catnip;
   game.diamonds = oldDiamonds;
   game.prestigeCount = oldPrestigeCount;
-  game.prestigeMultiplier = getNextPrestigeMultiplier();
+  game.prestigeMultiplier = settlement.multiplier;
   game.elixirs = oldElixirs;
 
   // Reset cats — keep anchored cat if Tier 6 (35+)
   game.cats.forEach(c => {
-    if (oldAnchoredCatId && c.id === oldAnchoredCatId && game.prestigeCount >= 35) {
+    if (c.id === settlement.catId) {
       c.count = Math.min(1, c.count);
     } else {
       c.count = 0;
@@ -653,8 +659,7 @@ function prestige() {
   // Catnip purchases are permanent; only the selected fish upgrade survives.
   // Diamond purchases retain their existing persistence.
   game.upgrades.forEach(u => {
-    const preserved = oldPreservedUpgradeId === u.id && game.prestigeCount >= 75;
-    if (u.currency === 'catnip' || u.currency === 'diamonds' || preserved) return;
+    if (keepsPrestigeUpgrade(u, game.prestigeCount)) return;
     u.purchased = false;
     u.level = 0;
   });

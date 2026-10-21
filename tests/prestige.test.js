@@ -31,7 +31,7 @@ test('catnip upgrades and diamond levels persist; all unselected fish upgrades r
   const c = setup();
   c.game.upgrades.forEach(u => { u.purchased = u.type === 'once'; u.level = u.type === 'stackable' ? 3 : 0; });
   c.game.catnip = 123;
-  const reward = c.calculatePrestigeReward;
+  const reward = () => c.getPrestigeSettlement().catnip;
   c.game.totalFishEarned = c.getCatnipNeeded();
   const gain = reward();
   reset(c);
@@ -146,4 +146,68 @@ test('prestige checks the quadratic threshold, and refuses without changing stat
   assert.equal(JSON.stringify(c.game), before);
   reset(c);
   assert.equal(c.game.prestigeCount, 25);
+});
+
+test('one receipt pays fish and proportional catnip exactly once, even at the former cashback tier', () => {
+  for (const completed of [0, 4, 9, 19, 24, 50, 100]) {
+    const c = setup();
+    c.game.prestigeCount = completed;
+    c.game.catnip = 123;
+    c.game.totalFishEarned = c.getCatnipNeeded();
+    const before = JSON.stringify(c.game);
+    const receipt = c.getPrestigeSettlement();
+    assert.equal(JSON.stringify(c.game), before);
+    assert.equal(receipt.fish, Math.floor(Math.sqrt(c.getCatnipNeeded()) / 100));
+    assert.equal(receipt.catnip, Math.floor(receipt.fish * (completed >= 50 ? 1.25 : 1)));
+    assert.equal(c.prestige(), true);
+    assert.equal(c.game.fish, receipt.fish);
+    assert.equal(c.game.catnip, 123 + receipt.catnip);
+    assert.equal(c.game.totalFishEarned, 0); // Reset reward does not feed the next requirement.
+    assert.equal(c.prestige(), false);
+    assert.equal(c.game.catnip, 123 + receipt.catnip);
+  }
+});
+
+test('catnip reward modifiers survive resets and never scale with total round fish directly', () => {
+  const c = setup();
+  for (const id of ['karmnik', 'prestigeBoost']) c.game.upgrades.find(u => u.id === id).purchased = true;
+  c.game.totalFishEarned = 1e7;
+  assert.equal(c.getPrestigeSettlement().fish, 31);
+  assert.equal(c.getPrestigeSettlement().catnip, 77);
+  reset(c);
+  c.game.prestigeCount = 50;
+  c.game.totalFishEarned = 1e12;
+  const receipt = c.getPrestigeSettlement();
+  assert.equal(receipt.fish, 10000);
+  assert.equal(receipt.catnip, 31250); // Not 1 billion from F/1000.
+});
+
+test('fifth and twentieth resets exceed the effective production gain criteria with identical cats', () => {
+  const c = setup();
+  for (let n = 1; n <= 20; n++) {
+    c.game.cats[0].count = 20000;
+    c.recalcFPS();
+    const before = c.game.fishPerSecond;
+    const receipt = c.getPrestigeSettlement();
+    reset(c);
+    c.game.cats[0].count = 20000;
+    c.recalcFPS();
+    close(c.game.fishPerSecond / before, receipt.fishMultiplierAfter / receipt.fishMultiplierBefore);
+    if (n === 5) assert.ok(c.game.fishPerSecond / before >= 1.15);
+    if (n === 20) assert.ok(c.game.fishPerSecond / before >= 1.05);
+  }
+});
+
+test('receipt preservation list matches the actual cats and upgrades after reset', () => {
+  const c = setup();
+  c.game.prestigeCount = 75;
+  c.game.anchoredCatId = 'dachowiec';
+  c.game.cats[0].count = 50;
+  c.game.preservedUpgradeId = 'karma';
+  c.game.upgrades.forEach(u => { u.purchased = u.type === 'once'; u.level = u.type === 'stackable' ? 2 : 0; });
+  const receipt = c.getPrestigeSettlement();
+  reset(c);
+  assert.equal(receipt.catId, c.game.cats.find(cat => cat.count === 1).id);
+  assert.equal(receipt.preservedUpgradeId, 'karma');
+  assert.deepEqual(Array.from(receipt.upgrades, u => u.id), Array.from(c.game.upgrades.filter(u => c.hasUpgrade(u.id)), u => u.id));
 });

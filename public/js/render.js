@@ -352,10 +352,6 @@ function updateStats() {
   if (prestigeNeedMore) {
     setStat('prestigeNeedMore', `Need ${formatNumber(Math.max(0, getCatnipNeeded() - game.totalFishEarned))} more fish`);
   }
-  const prestigeCashbackLine = document.getElementById('prestigeCashbackLine');
-  if (prestigeCashbackLine) {
-    setStat('prestigeCashbackLine', `🐟 Kocia Łaska: +🌿 ${formatNumber(Math.floor(game.totalFishEarned * 0.1 / 100))} catnip cashback!`);
-  }
   const prestigeCatnipVal = document.getElementById('prestigeCatnipVal');
   if (prestigeCatnipVal) {
     setStat('prestigeCatnipVal', formatNumber(Math.floor(game.catnip)));

@@ -149,6 +149,14 @@
 
   <!-- ===== Modals ===== -->
 
+  <dialog id="prestigeDialog" aria-label="Prestige" oncancel="cancelPrestige()" onclose="cancelPrestige()">
+    <div id="prestigeReceipt"></div>
+    <div style="display:flex;gap:12px;margin-top:16px">
+      <button id="prestigeCancel" class="btn btn-secondary" onclick="cancelPrestige()"></button>
+      <button id="prestigeConfirm" class="btn btn-danger" onclick="confirmPrestige()"></button>
+    </div>
+  </dialog>
+
   <!-- Auth Modal (Login / Register) -->
   <div id="modalAuth" class="modal">
     <div class="modal-content">
