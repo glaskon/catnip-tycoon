@@ -1177,7 +1177,11 @@ async function loadGame(localState = readLocalState()) {
     let imported;
     checkpoint = buildSaveState();
     try {
-      imported = await api.saveGameState(checkpoint, localState.guestMigrationId);
+      // The album is never read from checkpoint — only a verified server
+      // record for this device can seed it (decision 6B). Sending no id at
+      // all simply imports with no album.
+      const deviceId = typeof getDeviceId === 'function' ? getDeviceId() : undefined;
+      imported = await api.saveGameState(checkpoint, localState.guestMigrationId, deviceId);
     } catch (err) {
       if (err.code !== 'IMPORT_USED') throw err;
       // This snapshot belongs to another account. Keep its recovery copy,

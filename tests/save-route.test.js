@@ -29,7 +29,13 @@ function route(now = Date.parse('2026-11-01T12:00:00Z')) {
       if (sql.startsWith('SELECT game_state')) return { rows: saves.has(args[0]) ? [structuredClone(saves.get(args[0]))] : [] };
       if (sql.startsWith('SELECT user_id FROM guest_imports')) return { rows: receipts.has(args[0]) ? [{ user_id: receipts.get(args[0]) }] : [] };
       if (sql.startsWith('SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums')) {
-        return { rows: guestAlbums.has(args[0]) ? [structuredClone(guestAlbums.get(args[0]))] : [] };
+        const row = guestAlbums.get(args[0]);
+        return { rows: row && row.claimed_by == null ? [structuredClone(row)] : [] };
+      }
+      if (sql.startsWith('UPDATE guest_albums SET claimed_by')) {
+        const row = guestAlbums.get(args[1]);
+        if (row) row.claimed_by = args[0];
+        return { rows: [] };
       }
       if (sql.startsWith('INSERT INTO guest_imports')) {
         if (receipts.has(args[0])) return { rows: [] };
@@ -65,7 +71,7 @@ function route(now = Date.parse('2026-11-01T12:00:00Z')) {
     // Seeds a guest's server-owned album, as if they had stamped it before registering.
     seedGuestAlbum(deviceId, album) {
       guestAlbums.set(deviceId, { time_zone: album.timeZone, month: album.month, stamps: album.stamps,
-        last_stamp_day: album.lastDay, history: album.history });
+        last_stamp_day: album.lastDay, history: album.history, claimed_by: null });
     },
     async request(user, state, revision = 0, id, deviceId) {
       const res = { code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } };
@@ -270,6 +276,39 @@ for (const stamps of [4, 10]) {
     assert.deepEqual(r.saves.get(1).game_state.album, real);
   });
 }
+
+test('a device album can only seed one account; a second import with the same device_id gets nothing', async () => {
+  const r = route();
+  const deviceId = 'device-reused';
+  const real = albumAt('2026-10-22', 7, { '2026-09': 10 });
+  r.seedGuestAlbum(deviceId, real);
+  const first = await r.request(1, { fish: 10, guestMigrationId: 'claim-1' }, 0, 'claim-1', deviceId);
+  assert.equal(first.code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, real);
+  assert.equal(r.guestAlbums.get(deviceId).claimed_by, 1);
+  // A different account importing with the SAME device_id (e.g. someone who
+  // cleared cookies and reused a stolen/shared device id) gets no album —
+  // the record was already consumed, even though it is still full of stamps.
+  const second = await r.request(2, { fish: 10, guestMigrationId: 'claim-2' }, 0, 'claim-2', deviceId);
+  assert.equal(second.code, 200);
+  assert.equal(r.saves.get(2).game_state.album, null);
+});
+
+test('a failed import does not consume the device record, even after the album was read', async () => {
+  const r = route();
+  const deviceId = 'device-rolled-back';
+  r.seedGuestAlbum(deviceId, albumAt('2026-10-22', 3));
+  // The transplanted album alone is enough real progress to pass that check,
+  // but the mismatched guestMigrationId still fails the import afterwards —
+  // the whole request, including the claim, must roll back.
+  const failed = await r.request(1, { guestMigrationId: 'wrong-id' }, 0, 'claim-fail', deviceId);
+  assert.equal(failed.code, 400);
+  assert.equal(r.guestAlbums.get(deviceId).claimed_by, null);
+  const retried = await r.request(1, { guestMigrationId: 'claim-fail' }, 0, 'claim-fail', deviceId);
+  assert.equal(retried.code, 200);
+  assert.equal(r.saves.get(1).game_state.album.stamps, 3);
+  assert.equal(r.guestAlbums.get(deviceId).claimed_by, 1);
+});
 
 test('new account POST with a full state and ten stamps returns 400 without persisting', async () => {
   const r = route(Date.parse('2026-10-22T12:00:00Z'));

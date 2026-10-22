@@ -58,6 +58,11 @@ async function initDB() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      -- Once a device's album has been read during an account import, it is
+      -- claimed and cannot seed a second account (ALTER for upgrades from
+      -- stage 1, where this table had no claim column yet).
+      ALTER TABLE guest_albums ADD COLUMN IF NOT EXISTS claimed_by INTEGER REFERENCES users(id);
+
       -- Store transactions (Stripe)
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,

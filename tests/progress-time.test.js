@@ -13,7 +13,7 @@ function setup() {
   c.document = { getElementById: () => null, body: { children: [] } };
   c.i18n = { t: (key, fallback) => fallback || key };
   c.showDebug = () => {};
-  for (const file of ['save-progress', 'prestige', 'catlife']) {
+  for (const file of ['save-progress', 'prestige', 'catlife', 'device']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), c);
   }
   c.showOfflineEarnings = context => { c.receipt = context; };
@@ -33,9 +33,9 @@ function account(c, initial) {
   c.api.token = 'token';
   c.writes = [];
   c.api.loadGameState = async () => ({ gameState: structuredClone(saved), updatedAt: new Date(NOW - 3600000).toISOString() });
-  c.api.saveGameState = async (state, id) => {
+  c.api.saveGameState = async (state, id, deviceId) => {
     saved = structuredClone(state);
-    c.writes.push({ state: saved, id });
+    c.writes.push({ state: saved, id, deviceId });
     return { success: true };
   };
 }
@@ -124,6 +124,7 @@ test('migration preserves the full guest snapshot, checkpoints once, and announc
   assert.equal(c.game.fish, 2800);
   assert.equal(c.writes.length, 1);
   assert.ok(c.writes[0].id);
+  assert.equal(c.writes[0].deviceId, c.getDeviceId()); // only a verified device record may seed the album (decision 6B)
   assert.equal(c.writes[0].state.saveOwnerId, '7');
   assert.equal(c.writes[0].state.daily.count, 2);
   assert.equal(c.writes[0].state.gacha.totalPulls, 1);

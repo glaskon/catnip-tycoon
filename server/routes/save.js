@@ -241,15 +241,20 @@ function validateAlbumProgress(album, previous, now = Date.now()) {
 
 // The only legitimate source of a guest's album is their own server record
 // (decision 6B) — never the import payload, which anyone can forge. A device
-// with no stamping history yet (or none given) imports with no album at all;
-// see the "ważna konsekwencja" note in the stage-6B writeup: an unverifiable
-// local album is lost on import rather than trusted.
-async function loadGuestAlbumForTransplant(client, deviceId, now = Date.now()) {
+// with no stamping history yet (or none given, or already claimed by another
+// import) imports with no album at all; see the "ważna konsekwencja" note in
+// the stage-6B writeup: an unverifiable local album is lost on import rather
+// than trusted. The row is claimed in the same transaction as the import, so
+// a request that ultimately fails (400/409/500) rolls the claim back too —
+// only a committed import actually consumes the device record.
+async function loadGuestAlbumForTransplant(client, deviceId, userId, now = Date.now()) {
   if (!deviceId) return null;
   const result = await client.query(
-    'SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums WHERE device_id = $1', [deviceId]);
+    'SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums WHERE device_id = $1 AND claimed_by IS NULL FOR UPDATE',
+    [deviceId]);
   if (!result.rows.length) return null;
   const row = result.rows[0];
+  await client.query('UPDATE guest_albums SET claimed_by = $1 WHERE device_id = $2', [userId, deviceId]);
   if (!row.stamps) return null;
   return {
     timeZone: row.time_zone, month: row.month, stamps: row.stamps, lastDay: row.last_stamp_day,
@@ -293,7 +298,7 @@ router.post('/', authMiddleware, async (req, res) => {
       // The album never comes from this payload — only a verified server
       // record for this device may seed it. A forged or absent device record
       // simply imports with no album (see loadGuestAlbumForTransplant above).
-      game_state.album = await loadGuestAlbumForTransplant(client, device_id);
+      game_state.album = await loadGuestAlbumForTransplant(client, device_id, req.user.id);
       if (current && (hasRealProgress(current.game_state) || current.game_state.guestMigrationId)) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'Account already has progress', code: 'SAVE_CONFLICT' });
