@@ -198,6 +198,37 @@ function validateState(s) {
   return true;
 }
 
+// Structural validation runs first. Progress is checked against the locked
+// account snapshot so concurrent requests cannot award the same day twice.
+function validateAlbumProgress(album, previous, now = Date.now()) {
+  // Older clients may omit the album. The route retains the stored high-water mark.
+  if (!album) return true;
+  if (album.lastStampAt > now + 5 * 60 * 1000) return false;
+  if (!previous) return album.stamps <= 1 && Object.keys(album.history).length === 0;
+  if (album.month < previous.month || album.timeZone !== previous.timeZone ||
+      album.lastDay < previous.lastDay || album.lastStampAt < previous.lastStampAt) return false;
+
+  // Completed months are immutable. On rollover only the already saved current
+  // month may be archived, with exactly its saved number of stamps.
+  for (const [month, stamps] of Object.entries(previous.history)) {
+    if (album.history[month] !== stamps) return false;
+  }
+  for (const [month, stamps] of Object.entries(album.history)) {
+    if (Object.hasOwn(previous.history, month)) continue;
+    if (album.month === previous.month || month !== previous.month || stamps !== previous.stamps) return false;
+  }
+  if (album.month === previous.month && album.stamps === previous.stamps) return true;
+  // Advancing client dates alone is insufficient: otherwise ten backdated
+  // requests could still finish an album today. Use the shared calendar
+  // validator to match a server day, with the same five-minute clock tolerance.
+  const serverDay = [now - 5 * 60 * 1000, now, now + 5 * 60 * 1000]
+    .some(lastStampAt => validateAlbumState({ ...album, lastStampAt }));
+  if (!serverDay) return false;
+  if (album.month > previous.month) return album.stamps <= 1;
+  return album.stamps === previous.stamps + 1 && album.lastDay > previous.lastDay &&
+    album.lastStampAt > previous.lastStampAt;
+}
+
 /**
  * POST /api/save
  * Save/update the current user's game state in the database.
@@ -242,6 +273,12 @@ router.post('/', authMiddleware, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Save changed; reload before saving', code: 'SAVE_CONFLICT' });
     }
+    const previousAlbum = current && current.game_state.album;
+    if (!validateAlbumProgress(game_state.album, previousAlbum)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid album progress' });
+    }
+    if (!game_state.album && previousAlbum) game_state.album = previousAlbum;
     if (migration_id) {
       const inserted = await client.query(
         'INSERT INTO guest_imports (migration_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING migration_id',

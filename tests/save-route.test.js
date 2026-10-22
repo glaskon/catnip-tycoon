@@ -7,7 +7,7 @@ const { createGame } = require('./game-harness');
 
 // Exercise the actual route and validator. The transactional store is a test
 // double; PostgreSQL locking and DDL still need an integration environment.
-function route() {
+function route(now = Date.parse('2026-11-01T12:00:00Z')) {
   const saves = new Map([[1, { game_state: {}, revision: 0 }], [2, { game_state: {}, revision: 0 }]]);
   const receipts = new Map();
   let post, before, releases = 0;
@@ -42,7 +42,7 @@ function route() {
     },
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../server/routes/save.js'), 'utf8'), {
-    console, module: {}, require(name) {
+    console, Date: class extends Date { static now() { return now; } }, module: {}, require(name) {
       if (name === 'express') return { Router: () => ({ get() {}, post(p, auth, handler) { post = handler; } }) };
       if (name === '../db') return { pool: { connect: async () => client } };
       if (name === '../auth') return { authMiddleware() {} };
@@ -53,6 +53,7 @@ function route() {
   });
   return {
     saves, receipts,
+    setNow(value) { now = value; },
     async request(user, state, revision = 0, id) {
       const res = { code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } };
       await post({ user: { id: user }, body: { game_state: structuredClone(state), expected_revision: revision, migration_id: id } }, res);
@@ -140,14 +141,15 @@ test('first-cat reward marker survives the save route; malformed markers are rej
   }
 });
 
-test('populated album, history and monthly skin persist through the route and guest migration', async () => {
+test('stored album history and monthly skin persist; a first guest stamp can be imported', async () => {
   const c = createGame();
   const album = { timeZone: 'Europe/Warsaw', month: '2026-11', stamps: 1,
     lastDay: '2026-11-01', lastStampAt: Date.parse('2026-11-01T12:00:00Z'), history: { '2026-10': 10 } };
   c.applyGameState({ album, purchasedItems: ['skin_album_2026-10'], guestMigrationId: 'album-guest' });
   const state = JSON.parse(JSON.stringify(c.buildSaveState()));
   const r = route();
-  assert.equal((await r.request(1, state, 0, 'album-guest')).code, 200);
+  r.saves.set(1, { game_state: { album }, revision: 0 });
+  assert.equal((await r.request(1, state)).code, 200);
   const stored = r.saves.get(1).game_state;
   assert.deepEqual(stored.album, album);
   assert.deepEqual(stored.purchasedItems, ['skin_album_2026-10']);
@@ -155,7 +157,7 @@ test('populated album, history and monthly skin persist through the route and gu
   clone.applyGameState(stored);
   assert.deepEqual(JSON.parse(JSON.stringify(clone.buildSaveState().album)), album);
   // A guest with only a first stamp still has real progress to import.
-  const onlyStamp = { album, guestMigrationId: 'stamp-guest' };
+  const onlyStamp = { album: { ...album, history: {} }, guestMigrationId: 'stamp-guest' };
   assert.equal((await r.request(2, onlyStamp, 0, 'stamp-guest')).code, 200);
 });
 
@@ -195,4 +197,130 @@ test('separate activations of all elixirs and shop boosts fit in the save payloa
   const r = route();
   assert.equal((await r.request(1, state)).code, 200);
   assert.equal(r.saves.get(1).game_state.activeBoosts.length, 25);
+});
+
+function albumAt(day, stamps = 1, history = {}) {
+  return { timeZone: 'UTC', month: day.slice(0, 7), stamps, lastDay: day,
+    lastStampAt: Date.parse(day + 'T12:00:00Z'), history };
+}
+
+test('new account POST with a full state and ten stamps returns 400 without persisting', async () => {
+  const r = route(Date.parse('2026-10-22T12:00:00Z'));
+  const state = JSON.parse(JSON.stringify(createGame().buildSaveState()));
+  for (const user of [1, 3]) { // an empty save and no save row
+    const before = structuredClone(r.saves.get(user));
+    const result = await r.request(user, { ...state, album: albumAt('2026-10-22', 10) });
+    assert.equal(result.code, 400);
+    assert.equal(result.body.error, 'Invalid album progress');
+    assert.deepEqual(r.saves.get(user), before);
+    assert.equal((await r.request(user, { ...state, album: albumAt('2026-10-22') })).code, 200);
+  }
+  assert.equal(r.releases, 4);
+});
+
+test('same-day stamp increment and multi-stamp jumps return 400; unchanged album is accepted', async () => {
+  const r = route();
+  const album = albumAt('2026-10-21');
+  assert.equal((await r.request(1, { album })).code, 200);
+  for (const invalid of [{ ...album, stamps: 2 }, albumAt('2026-10-22', 3)]) {
+    assert.equal((await r.request(1, { album: invalid }, 1)).code, 400);
+    assert.deepEqual(r.saves.get(1).game_state.album, album);
+    assert.equal(r.saves.get(1).revision, 1);
+  }
+  assert.equal((await r.request(1, { album }, 1)).code, 200);
+});
+
+test('one stamp on each later day succeeds through the tenth reward and subsequent visits', async () => {
+  const r = route();
+  for (let day = 1; day <= 11; day++) {
+    const state = { album: albumAt(`2026-10-${String(day).padStart(2, '0')}`, Math.min(day, 10)),
+      purchasedItems: day >= 10 ? ['skin_album_2026-10'] : [] };
+    r.setNow(state.album.lastStampAt);
+    assert.equal((await r.request(1, state, day - 1)).code, 200);
+    assert.deepEqual(r.saves.get(1).game_state.album, state.album);
+  }
+  assert.deepEqual(r.saves.get(1).game_state.purchasedItems, ['skin_album_2026-10']);
+});
+
+test('month rollover accepts one stamp and archives only the saved month; five stamps fail', async () => {
+  const r = route();
+  const previous = albumAt('2026-10-31', 10, { '2026-09': 2 });
+  r.saves.set(1, { game_state: { album: previous }, revision: 7 });
+  const history = { '2026-09': 2, '2026-10': 10 };
+  assert.equal((await r.request(1, { album: albumAt('2026-11-01', 5, history) }, 7)).code, 400);
+  const album = albumAt('2026-11-01', 1, history);
+  assert.equal((await r.request(1, { album }, 7)).code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
+  assert.equal((await r.request(1, { album: previous }, 8)).code, 400);
+});
+
+test('history cannot be invented, modified or removed, including during rollover or guest import', async () => {
+  const r = route();
+  const album = albumAt('2026-10-31', 2, { '2026-09': 3 });
+  r.saves.set(1, { game_state: { album }, revision: 0 });
+  const invalid = [
+    { ...album, history: { ...album.history, '2026-08': 10 } },
+    { ...album, history: { '2026-09': 10 } },
+    { ...album, history: {} },
+    albumAt('2026-11-01', 1, { '2026-09': 3, '2026-10': 10 }),
+    albumAt('2026-11-01', 1, { '2026-09': 3, '2026-10': 2, '2026-08': 10 }),
+  ];
+  for (const value of invalid) {
+    assert.equal((await r.request(1, { album: value })).code, 400);
+    assert.deepEqual(r.saves.get(1).game_state.album, album);
+  }
+  assert.equal((await r.request(2, { album: albumAt('2026-10-22', 1, { '2026-09': 10 }),
+    guestMigrationId: 'invented-history' }, 0, 'invented-history')).code, 400);
+  assert.equal(r.receipts.size, 0);
+});
+
+test('future stamp timestamps have an exact five-minute server-clock tolerance', async () => {
+  const now = Date.parse('2026-10-22T12:00:00Z');
+  const r = route(now);
+  const album = albumAt('2026-10-22');
+  assert.equal((await r.request(1, { album: { ...album, lastStampAt: now + 300001 } })).code, 400);
+  assert.equal((await r.request(1, { album: { ...album, lastStampAt: now + 300000 } })).code, 200);
+  assert.equal((await r.request(2, { album: albumAt('2026-10-23') })).code, 400);
+});
+
+test('album progress cannot rewind stamps, days, timestamps or change the calendar zone', async () => {
+  const r = route();
+  const album = albumAt('2026-10-22', 2);
+  r.saves.set(1, { game_state: { album }, revision: 0 });
+  for (const invalid of [
+    { ...album, stamps: 1 }, albumAt('2026-10-21', 2),
+    { ...album, lastStampAt: album.lastStampAt - 1 },
+    { ...album, timeZone: 'Europe/Warsaw' },
+  ]) assert.equal((await r.request(1, { album: invalid })).code, 400);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
+});
+
+test('normal saves and guest imports without albums still work and cannot erase stored progress', async () => {
+  const r = route();
+  assert.equal((await r.request(1, { fish: 42 })).code, 200);
+  assert.equal((await r.request(2, { fish: 42, guestMigrationId: 'no-album' }, 0, 'no-album')).code, 200);
+  const album = albumAt('2026-10-22');
+  assert.equal((await r.request(1, { fish: 42, album }, 1)).code, 200);
+  assert.equal((await r.request(1, { fish: 43 }, 2)).code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
+  assert.equal((await r.request(1, { fish: 44, album: null }, 3)).code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
+  assert.equal((await r.request(1, { album: { ...album, stamps: 2 } }, 4)).code, 400);
+});
+
+test('guest import cannot bypass the new-account stamp limit or consume a receipt on rejection', async () => {
+  const r = route();
+  const state = { fish: 42, guestMigrationId: 'bad-album', album: albumAt('2026-10-22', 10) };
+  assert.equal((await r.request(1, state, 0, 'bad-album')).code, 400);
+  assert.equal(r.receipts.size, 0);
+  assert.equal(r.saves.get(1).revision, 0);
+  assert.equal((await r.request(1, { ...state, album: albumAt('2026-10-22') }, 0, 'bad-album')).code, 200);
+});
+
+test('backdated requests cannot simulate elapsed days against an unchanged server clock', async () => {
+  const r = route(Date.parse('2026-10-22T12:00:00Z'));
+  assert.equal((await r.request(1, { album: albumAt('2026-10-01') })).code, 200);
+  assert.equal((await r.request(1, { album: albumAt('2026-10-02', 2) }, 1)).code, 400);
+  assert.equal((await r.request(1, { album: albumAt('2026-10-22', 2) }, 1)).code, 200);
+  assert.equal((await r.request(1, { album: albumAt('2026-10-22', 3) }, 2)).code, 400);
 });
