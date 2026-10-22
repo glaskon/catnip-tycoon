@@ -9,6 +9,11 @@ const { pool } = require('../db');
  * No auth required — public endpoint.
  */
 router.get('/', async (req, res) => {
+  // Hidden until economy validation, ranking metric and test accounts are reviewed.
+  // Restore with LEADERBOARD_ENABLED=true; UI restoration: docs/leaderboard-decision-4a.md.
+  if (process.env.LEADERBOARD_ENABLED !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
   try {
     const result = await pool.query(`
       SELECT 
