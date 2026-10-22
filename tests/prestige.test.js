@@ -211,3 +211,46 @@ test('receipt preservation list matches the actual cats and upgrades after reset
   assert.equal(receipt.preservedUpgradeId, 'karma');
   assert.deepEqual(Array.from(receipt.upgrades, u => u.id), Array.from(c.game.upgrades.filter(u => c.hasUpgrade(u.id)), u => u.id));
 });
+
+test('all requirements through count 100 stay numerically identical to the old formula', () => {
+  const c = setup();
+  for (let count = 0; count <= 100; count++) {
+    c.game.prestigeCount = count;
+    const next = count + 1;
+    assert.equal(c.getCatnipNeeded(), 10000000 * next * (next > 21 ? next / 21 : 1), `count=${count}`);
+  }
+  assert.equal(c.getCatnipNeeded(), 4857619047.619047);
+});
+
+test('one phoenix takes at least five minutes and strictly longer at every depth after count 100', () => {
+  const c = setup();
+  c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
+  for (const multiplier of [1, 3]) {
+    c.game.prestigeMultiplier = multiplier;
+    c.game.prestigeCount = 99;
+    c.recalcFPS();
+    let previous = c.getCatnipNeeded() / c.game.fishPerSecond;
+    // Include every ascension step, not only the seven report samples.
+    for (let count = 101; count <= 500; count++) {
+      c.game.prestigeCount = count;
+      c.recalcFPS();
+      const seconds = c.getCatnipNeeded() / c.game.fishPerSecond;
+      assert.ok(seconds >= 300, `count=${count}, multiplier=${multiplier}: ${seconds}s`);
+      assert.ok(seconds > previous, `count=${count}: ${seconds} <= ${previous}`);
+      close(c.getPrestigeFishMultiplier(), multiplier * 2 * (1 + Math.floor(count / 10) * 0.05) * 100);
+      previous = seconds;
+    }
+  }
+});
+
+test('protected count 100 still has the documented seconds-long reset with the retained goddess bonus', () => {
+  const c = setup();
+  c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
+  c.game.prestigeCount = 100;
+  for (const multiplier of [1, 3]) {
+    c.game.prestigeMultiplier = multiplier;
+    c.recalcFPS();
+    close(c.game.fishPerSecond, 375000000 * multiplier);
+    close(c.getCatnipNeeded() / c.game.fishPerSecond, 12.953650793650793 / multiplier);
+  }
+});

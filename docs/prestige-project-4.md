@@ -161,3 +161,29 @@ Po commicie 1: 45/45 testów. Po commicie 2: 47/47. Stan końcowy: **55/55 test�
 `node --check` wykonano dla wszystkich plików JavaScript w `public/`, `server/` i `tests/`; bez błędów. `git diff --check` bez błędów. Testy korzystają z `createGame()` i wykonują rzeczywiste funkcje gry. Okno testowano z atrapą DOM i zegara w Node; nie wykonano wizualnego testu w przeglądarce. Test trasy zapisu korzysta z istniejącej atrapy transakcji, nie z uruchomionej bazy PostgreSQL.
 
 Praca wyłącznie na `dev`, trzy commity w kolejności 1→2→3, bez pushowania, zmian `main` i usuwania plików.
+
+## Decyzja 1A — wymagania po 100 ukończonych resetach
+
+`c` oznacza `game.prestigeCount`, czyli liczbę ukończonych resetów, a nie numer następnego resetu.
+Dotychczasowy próg `W(c) = 10 000 000 × (c+1) × max(1, (c+1)/21)` zostaje dokładnie bez zmian dla `c ≤ 100`.
+Dla `c > 100` nowy próg to `W(c) × 100 × A(c)/1,5`, gdzie `A(c) = 1 + floor(c/10) × 0,05`.
+Bonus produkcji ×100 zostaje. Czynnik A kompensuje skoki produkcji co 10 prestiży, więc przy identycznej kolonii czas rośnie jak `(c+1)²`, także na granicach dziesiątek. Próg nie zależy od mnożnika stałego gracza.
+
+Pomiar: jeden Kotfeniks (1 250 000 bazowych ryb/s wraz z własnym bonusem), bez ulepszeń, pupila, klikania, zakupów i boosterów. Czas = próg / rzeczywiste `fishPerSecond`; start od zerowego `totalFishEarned`.
+
+| Ukończone prestiże | Stary czas ×1 (min) | Nowy czas ×1 (min) | Nowy czas ×3 (min) |
+|---:|---:|---:|---:|
+| 99 | 21,893815 | 21,893815 | 7,297938 |
+| 100 | 0,215894 | 0,215894 | 0,071965 |
+| 101 | 0,220190 | 22,019048 | 7,339683 |
+| 110 | 0,252350 | 26,076190 | 8,692063 |
+| 150 | 0,413624 | 48,256085 | 16,085362 |
+| 200 | 0,641286 | 85,504762 | 28,501587 |
+| 300 | 1,150489 | 191,748148 | 63,916049 |
+| 500 | 2,276653 | 531,219048 | 177,073016 |
+
+Porównanie chronionych progów (ryby, przed = po): `c=0`: 10 000 000; `c=20`: 210 000 000; `c=99`: 4 761 904 761,904762; `c=100`: 4 857 619 047,619047. Test porównuje wszystkie 101 wartości `c=0…100` ścisłym `assert.equal`.
+
+**Niespełnione kryteria:** przy 100 nadal jest 12,95 s (×1) / 4,32 s (×3), a więc nie ma 5–15 min ani monotoniczności całej listy 99→100→110. Zachowanie niezmiennego wymagania dla `c ≤ 100` i bonusu ×100 uniemożliwia spełnienie tych warunków przez zmianę progu. Dodatkowo 21,89 min przy 99 dla ×1 już przekracza górną granicę 15 min żądaną przy 100. Od 101 każdy kolejny czas do 500 jest dłuższy i wynosi ≥5 min w obu wariantach; test sprawdza wszystkie poziomy, nie tylko wiersze tabeli. Wysokie poziomy mogą trwać godziny.
+
+Pomiary ze zlecenia pozostają punktem odniesienia: ~13 s przy 100, ~39 s przy 200 i ~3 min przy 500 dotyczą ×1; ~7 min przy 99 odpowiada ×3. Powyższa tabela pokazuje obie konfiguracje osobno, bez zmiany tych danych odniesienia.

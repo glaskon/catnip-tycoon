@@ -589,7 +589,12 @@ function getNextPrestigeMultiplier() {
 function getCatnipNeeded() {
   const next = game.prestigeCount + 1;
   // Both branches meet at next=21 (20 completed prestiges).
-  return 10000000 * next * (next > 21 ? next / 21 : 1);
+  const requirement = 10000000 * next * (next > 21 ? next / 21 : 1);
+  if (game.prestigeCount <= 100) return requirement;
+  // Offset the goddess bonus and ascension steps after the protected boundary.
+  // With identical cats, reset time now grows as next², including tier changes.
+  const ascension = 1 + Math.floor(game.prestigeCount / 10) * 0.05;
+  return requirement * 100 * ascension / 1.5;
 }
 
 // Fish awarded at reset; catnip is proportional to this reward, never run earnings.
