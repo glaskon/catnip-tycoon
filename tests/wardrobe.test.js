@@ -62,6 +62,34 @@ test('loading a pre-wardrobe save renders the last owned skin palette', () => {
   assert.ok(c.strokeColors.includes('#8a9498'));
 });
 
+test('legacy wardrobe keeps last skin and outfit but reduces combined effects to one palette without losing ownership', () => {
+  const c = setup();
+  const purchasedItems = ['skin_orange', 'skin_black', 'outfit_hat', 'outfit_crown', 'effect_rainbow', 'effect_sparkle'];
+  c.applyGameState({ purchasedItems });
+  assert.equal(c.game.equippedSkin, 'skin_black');
+  assert.equal(c.game.equippedOutfit, 'outfit_crown');
+  assert.equal(c.game.equippedEffect, 'effect_sparkle');
+  c.drawCat();
+  assert.equal(c.colors[0], '#2d3436');
+  assert.ok(c.colors.includes('#f1c40f'));
+  const particles = [];
+  c.document.querySelectorAll = () => [];
+  c.document.createElement = () => ({ style: { setProperty() {} }, addEventListener() {}, remove() {} });
+  c.document.body.appendChild = particle => particles.push(particle.textContent);
+  c.setTimeout = () => {};
+  c.Math = Object.create(Math);
+  c.Math.random = () => 0.99;
+  c.spawnParticles(100, 100, 1);
+  assert.deepEqual(particles, ['💫']); // Last emoji of sparkle, no rainbow palette.
+  assert.deepEqual(saved(c).purchasedItems, purchasedItems);
+  assert.equal(c.equipCosmetic('effect', 'effect_rainbow'), true);
+  c.spawnParticles(100, 100, 1);
+  assert.equal(particles.at(-1), '🐟');
+  assert.equal(c.game.equippedSkin, 'skin_black');
+  assert.equal(c.game.equippedOutfit, 'outfit_crown');
+  assert.deepEqual(saved(c).purchasedItems, purchasedItems);
+});
+
 function card(c, id) {
   const match = c.panel.innerHTML.match(new RegExp('<div class="shop-item wardrobe-item[^>]*data-cosmetic="' + id + '"[\\s\\S]*?</button>'));
   assert.ok(match, 'visible card: ' + id);
