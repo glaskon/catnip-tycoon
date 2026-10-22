@@ -108,7 +108,7 @@ test('new metadata and existing boost payloads validate; malformed boosts and me
     { clickScalingBaseline: -1 }, { clickScalingBaseline: NaN }, { clickScalingBaseline: '0' }]) {
     assert.equal((await r.request(1, { ...state, ...invalid }, 1)).code, 400);
   }
-  assert.equal((await r.request(1, { ...state, activeBoosts: Array(21).fill(state.activeBoosts[0]) }, 1)).code, 400);
+  assert.equal((await r.request(1, { ...state, activeBoosts: Array(1001).fill(state.activeBoosts[0]) }, 1)).code, 400);
   assert.equal((await r.request(1, { ...state, activeBoosts: [{ kind: 'production', mult: 1000, remainingMs: 10000000 }] }, 1)).code, 200);
 });
 
@@ -179,4 +179,20 @@ test('album validator rejects malformed calendars, stamps, timestamps and histor
     assert.equal(c.game.album, null);
     assert.equal(c.game.fish, 42);
   }
+});
+
+test('separate activations of all elixirs and shop boosts fit in the save payload', async () => {
+  const c = createGame();
+  for (let i = 0; i < 10; i++) {
+    c.applyBoost('speed', 10, 30000);
+    c.applyBoost('production', 10, 30000);
+  }
+  for (let i = 0; i < 3; i++) c.applyBoost('click', 5, 120000);
+  c.applyBoost('speed', 2, 3600000);
+  c.applyBoost('click', 3, 3600000);
+  const state = JSON.parse(JSON.stringify(c.buildSaveState()));
+  assert.equal(state.activeBoosts.length, 25);
+  const r = route();
+  assert.equal((await r.request(1, state)).code, 200);
+  assert.equal(r.saves.get(1).game_state.activeBoosts.length, 25);
 });

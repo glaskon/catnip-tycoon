@@ -150,7 +150,7 @@ function validateState(s) {
         if (!validateGacha(v)) return false;
         break;
       case 'arrBoosts':
-        if (!Array.isArray(v) || v.length > 20) return false;
+        if (!Array.isArray(v) || v.length > MAX_ARRAY_LEN) return false;
         for (const e of v) {
           if (!e || typeof e !== 'object' || Array.isArray(e)) return false;
           const keys = Object.keys(e);

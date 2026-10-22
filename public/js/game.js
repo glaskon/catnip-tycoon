@@ -304,41 +304,48 @@ function calculateClickValue(mode = 'manual') {
 const BOOST_MAX_DURATION_MS = 5 * 60 * 1000;
 
 function applyBoost(kind, mult, durationMs) {
-  game.activeBoosts.push({ kind: kind, mult: mult, expiresAt: Date.now() + durationMs, maxDurationMs: durationMs });
-  recomputeBoostedValues();
+  const now = Date.now();
+  let startsAt = now;
+  // Identical short activations queue their own time, up to the elixir cap.
+  // A different strength (especially a shop boost) never joins it.
+  if (durationMs <= BOOST_MAX_DURATION_MS) {
+    for (const b of game.activeBoosts) {
+      if (b.kind === kind && b.mult === mult) {
+        startsAt = Math.max(startsAt, b.expiresAt);
+      }
+    }
+  }
+  const expiresAt = durationMs <= BOOST_MAX_DURATION_MS
+    ? Math.min(startsAt + durationMs, now + BOOST_MAX_DURATION_MS)
+    : now + durationMs;
+  if (expiresAt > startsAt) {
+    game.activeBoosts.push({ kind: kind, mult: mult, expiresAt, maxDurationMs: durationMs });
+  }
+  recomputeBoostedValues(now);
 }
 
 function recomputeBoostedValues(now = Date.now(), silent = false) {
   const before = game.activeBoosts.length;
   game.activeBoosts = game.activeBoosts.filter(b => b.expiresAt > now);
   if (!silent && game.activeBoosts.length < before && typeof showToast === 'function') showToast('⏰ Boost expired');
-  // Merge repeated activations and legacy saves: strongest multiplier wins,
-  // Remaining durations add up, capped at the longer of five minutes and
-  // the longest single activation of that kind (also preserved in saves).
+  // Each activation keeps its own expiry; stronger boosts never inherit time.
   const boosts = [];
   for (const b of game.activeBoosts) {
     if (!['speed', 'click', 'production'].includes(b.kind) ||
         !Number.isFinite(b.mult) || b.mult <= 0 || b.mult > 1000 ||
         !Number.isFinite(b.expiresAt)) continue;
-    const existing = boosts.find(boost => boost.kind === b.kind);
     const remainingMs = b.expiresAt - now;
     // Legacy saves have no original duration; preserve their remaining time.
     const maxDurationMs = Number.isFinite(b.maxDurationMs) && b.maxDurationMs > 0 ? b.maxDurationMs : remainingMs;
-    if (existing) {
-      existing.mult = Math.max(existing.mult, b.mult);
-      existing.maxDurationMs = Math.max(existing.maxDurationMs, maxDurationMs);
-      existing.expiresAt = now + Math.min(Math.max(BOOST_MAX_DURATION_MS, existing.maxDurationMs), existing.expiresAt - now + remainingMs);
-    } else {
-      boosts.push({ kind: b.kind, mult: b.mult, expiresAt: now + Math.min(Math.max(BOOST_MAX_DURATION_MS, maxDurationMs), remainingMs), maxDurationMs });
-    }
+    boosts.push({ kind: b.kind, mult: b.mult, expiresAt: b.expiresAt, maxDurationMs });
   }
   game.activeBoosts = boosts;
   const prevPP = game.productionMultiplier;
   let sp = 1, cp = 1, pp = 1;
   for (const b of game.activeBoosts) {
-    if (b.kind === 'speed') sp = b.mult;
-    else if (b.kind === 'click') cp = b.mult;
-    else if (b.kind === 'production') pp = b.mult;
+    if (b.kind === 'speed') sp = Math.max(sp, b.mult);
+    else if (b.kind === 'click') cp = Math.max(cp, b.mult);
+    else if (b.kind === 'production') pp = Math.max(pp, b.mult);
   }
   game.speedMultiplier = sp;
   game.fishPerClick = game.baseFishPerClick * cp;

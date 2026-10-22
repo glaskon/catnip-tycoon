@@ -186,19 +186,21 @@ test('save queue serializes requests and blocks writes throughout account select
   assert.equal(calls, 2);
 });
 
-test('same-kind boost cap and one-hour shop durations survive offline restoration', () => {
+test('identical elixir queue cap and independent shop hour survive offline restoration', () => {
   const c = setup();
   for (let n = 0; n < 20; n++) c.applyBoost('speed', 10, 30000);
-  assert.equal(c.game.activeBoosts.length, 1);
-  assert.equal(c.game.activeBoosts[0].expiresAt - NOW, 300000);
+  assert.equal(c.game.activeBoosts.length, 10);
+  assert.equal(c.game.activeBoosts[9].expiresAt - NOW, 300000);
   c.applyBoost('speed', 2, 3600000);
   assert.equal(c.game.speedMultiplier, 10);
-  assert.equal(c.game.activeBoosts[0].expiresAt - NOW, 3600000);
+  assert.equal(c.game.activeBoosts[10].expiresAt - NOW, 3600000);
   const state = JSON.parse(JSON.stringify(c.buildSaveState()));
   state.savedAt = NOW - 1800000;
   state.cats = [{ id: 'dachowiec', count: 1 }];
   c.restoreWithOffline(state);
-  assert.equal(c.game.fish, 9000);
+  // Five minutes at x10, then 25 minutes at x2; the hour keeps its expiry.
+  assert.equal(c.game.fish, 3000);
+  assert.equal(c.game.speedMultiplier, 2);
   assert.equal(c.game.activeBoosts[0].expiresAt - NOW, 1800000);
   assert.equal(c.game.activeBoosts[0].maxDurationMs, 3600000);
 });

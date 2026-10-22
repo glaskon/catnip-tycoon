@@ -70,8 +70,13 @@ const api = {
   },
 
   async saveGameState(gameState, migrationId) {
+    // Local duration metadata is not part of the server boost contract.
+    const state = { ...gameState };
+    if (Array.isArray(state.activeBoosts)) {
+      state.activeBoosts = state.activeBoosts.map(b => ({ kind: b.kind, mult: b.mult, remainingMs: b.remainingMs }));
+    }
     const data = await this.apiCall('/save', 'POST', {
-      game_state: gameState, expected_revision: this.revision, migration_id: migrationId,
+      game_state: state, expected_revision: this.revision, migration_id: migrationId,
     });
     this.revision = data.revision;
     return data;
