@@ -403,3 +403,19 @@ test('equipment save route accepts defaults and owned cosmetics, rejects unknown
   for (const key of ['equippedSkin', 'equippedOutfit', 'equippedEffect']) delete legacy[key];
   assert.equal((await route().request(1, legacy)).code, 200);
 });
+
+test('migrated legacy cosmetics pass the server validator and survive saving and reloading', async () => {
+  for (const purchasedItems of [[], ['outfit_hat'], ['skin_orange', 'skin_black'],
+    ['skin_album_2026-10', 'outfit_hat', 'outfit_crown', 'effect_rainbow', 'effect_aurora', 'skin_unknown', 'effect_unknown']]) {
+    const c = createGame();
+    c.applyGameState({ purchasedItems });
+    const state = JSON.parse(JSON.stringify(c.buildSaveState()));
+    const r = route();
+    assert.equal((await r.request(1, state)).code, 200);
+    const clone = createGame();
+    clone.applyGameState(r.saves.get(1).game_state);
+    for (const field of ['equippedSkin', 'equippedOutfit', 'equippedEffect']) {
+      assert.equal(clone.game[field], state[field]);
+    }
+  }
+});

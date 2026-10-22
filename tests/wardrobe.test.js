@@ -29,9 +29,15 @@ function setup() {
   c.saves = 0;
   c.saveGame = () => { c.saves++; c.snapshot = saved(c); };
   c.colors = [];
+  c.strokeColors = [];
   const ctx = new Proxy({}, {
     get: (o, key) => o[key] || (() => {}),
-    set: (o, key, value) => { if (key === 'fillStyle') c.colors.push(value); o[key] = value; return true; },
+    set: (o, key, value) => {
+      if (key === 'fillStyle') c.colors.push(value);
+      if (key === 'strokeStyle') c.strokeColors.push(value);
+      o[key] = value;
+      return true;
+    },
   });
   elements.set('catCanvas', { width: 200, height: 200, getContext: () => ctx });
   c.panel = panel;
@@ -40,9 +46,21 @@ function setup() {
 
 const ownedState = {
   fish: 1200, catnip: 43, diamonds: 8, elixirs: 2,
+  equippedSkin: null, equippedOutfit: null, equippedEffect: null,
   purchasedItems: ['skin_black', 'skin_siamese', 'outfit_hat', 'outfit_crown', 'effect_sparkle', 'effect_rainbow', 'skin_album_2026-09'],
   gacha: { totalPulls: 1, pity: 0, counts: { skin_galaxy: 1, effect_aurora: 1 } },
 };
+
+test('loading a pre-wardrobe save renders the last owned skin palette', () => {
+  const c = setup();
+  c.applyGameState({ purchasedItems: ['skin_orange', 'skin_black'] });
+  c.refreshAlbum = () => {};
+  c.endStateTransition();
+  assert.equal(c.game.equippedSkin, 'skin_black');
+  assert.equal(c.colors[0], '#2d3436');
+  assert.ok(c.strokeColors.includes('#9aa5a8'));
+  assert.ok(c.strokeColors.includes('#8a9498'));
+});
 
 function card(c, id) {
   const match = c.panel.innerHTML.match(new RegExp('<div class="shop-item wardrobe-item[^>]*data-cosmetic="' + id + '"[\\s\\S]*?</button>'));

@@ -912,11 +912,18 @@ function applyGameState(state, at = Date.now()) {
     }
   }
 
-  // Missing, unknown, wrong-category or unowned choices fall back to default.
-  // Ownership collections remain intact, including legacy cosmetics.
-  game.equippedSkin = validateEquippedCosmetic(state.equippedSkin, 'skin', state) ? state.equippedSkin : null;
-  game.equippedOutfit = validateEquippedCosmetic(state.equippedOutfit, 'outfit', state) ? state.equippedOutfit : null;
-  game.equippedEffect = validateEquippedCosmetic(state.equippedEffect, 'effect', state) ? state.equippedEffect : null;
+  // Pre-wardrobe saves used purchase order (lastOwned). Only missing fields
+  // inherit that appearance; explicit null remains the player's default choice.
+  // Effects now have one slot, so legacy combined palettes become the last effect.
+  const savedPurchasedItems = Array.isArray(state.purchasedItems) ? state.purchasedItems : [];
+  for (const [field, category] of [['equippedSkin', 'skin'], ['equippedOutfit', 'outfit'], ['equippedEffect', 'effect']]) {
+    let id = state[field];
+    if (id === undefined) {
+      id = savedPurchasedItems.filter(item => typeof item === 'string' &&
+        validateEquippedCosmetic(item, category, state)).pop() || null;
+    }
+    game[field] = validateEquippedCosmetic(id, category, state) ? id : null;
+  }
 
   // Restore cats
   const savedCats = Array.isArray(state.cats) ? state.cats : [];
@@ -962,7 +969,6 @@ function applyGameState(state, at = Date.now()) {
   localStorage.setItem('catnip-achievements', JSON.stringify(validAchievements));
 
   // Restore shop purchased items
-  const savedPurchasedItems = Array.isArray(state.purchasedItems) ? state.purchasedItems : [];
   window.purchasedItems = savedPurchasedItems;
   localStorage.setItem('catnip-purchased', JSON.stringify(savedPurchasedItems));
   const savedShopCounts = (state.shopCounts && typeof state.shopCounts === 'object' && !Array.isArray(state.shopCounts)) ? state.shopCounts : {};
