@@ -82,6 +82,17 @@ const api = {
     return data;
   },
 
+  // --- Album (decision 6B: the server owns the stamp calendar) ---
+  // device_id is sent either way; the server prefers the Bearer token and
+  // only falls back to it for guests, so there is no need to branch here.
+  async getAlbum(deviceId) {
+    return this.apiCall(`/album?device_id=${encodeURIComponent(deviceId)}`, 'GET');
+  },
+
+  async stampAlbum(deviceId, timeZone) {
+    return this.apiCall('/album/stamp', 'POST', { device_id: deviceId, timeZone });
+  },
+
   // --- Admin ---
   async adminSetSpeed(multiplier) {
     return this.apiCall('/admin/speed', 'POST', { multiplier });

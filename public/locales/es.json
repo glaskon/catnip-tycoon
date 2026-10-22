@@ -322,6 +322,7 @@
   "album.equip": "Usar",
   "album.visited": "Visita de hoy registrada. Vuelve mañana.",
   "album.waiting": "Esperando la comprobación de hora en línea. Los sellos se conservan.",
+  "album.offline": "Mostrando tus últimos sellos guardados — sin conexión. No se registra nada nuevo hasta que vuelvas a estar en línea.",
   "album.calendar": "Calendario del álbum: {zone}. Es tu zona local del primer sello; permanece fija al viajar.",
   "album.history": "Álbumes anteriores",
   "album.earned": "Conseguido",

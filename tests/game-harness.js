@@ -5,7 +5,7 @@ const path = require('node:path');
 function createGame() {
   const storage = new Map();
   const context = vm.createContext({
-    console, Date,
+    console, Date, crypto,
     localStorage: {
       getItem: key => storage.get(key) || null,
       setItem: (key, value) => storage.set(key, value),

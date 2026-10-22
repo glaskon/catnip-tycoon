@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { albumDayKey } = require('../server/album-logic');
 
 const JWT_SECRET = 'album-route-test-secret';
 
@@ -151,17 +152,22 @@ test('GET without a token or device_id is rejected; neither is required if the o
 test('a brand new identity has an empty current-month album and GET never writes', async () => {
   const r = route(Date.parse('2026-10-22T12:00:00Z'));
   const res = await r.getAsDevice('device-1');
-  assert.deepEqual(res.body, { month: '2026-10', stamps: 0, lastStampDay: '', history: {}, timeZone: null });
+  assert.deepEqual(res.body, { month: '2026-10', stamps: 0, lastStampDay: '', history: {}, timeZone: null, lastStampAt: null });
   assert.equal(r.guestAlbums.size, 0);
   const userRes = await r.getAsUser(1);
-  assert.deepEqual(userRes.body, { month: '2026-10', stamps: 0, lastStampDay: '', history: {}, timeZone: null });
+  assert.deepEqual(userRes.body, { month: '2026-10', stamps: 0, lastStampDay: '', history: {}, timeZone: null, lastStampAt: null });
 });
 
 test('one stamp per day for a guest device; a second request the same day is a no-op', async () => {
   const r = route(Date.parse('2026-10-22T12:00:00Z'));
   const first = await r.stampAsDevice('device-2', 'Europe/Warsaw');
   assert.equal(first.code, 200);
-  assert.deepEqual(first.body, { month: '2026-10', stamps: 1, lastStampDay: '2026-10-22', history: {}, timeZone: 'Europe/Warsaw' });
+  assert.equal(first.body.month, '2026-10');
+  assert.equal(first.body.stamps, 1);
+  assert.equal(first.body.lastStampDay, '2026-10-22');
+  assert.deepEqual(first.body.history, {});
+  assert.equal(first.body.timeZone, 'Europe/Warsaw');
+  assert.equal(albumDayKey(first.body.lastStampAt, 'Europe/Warsaw'), '2026-10-22');
   const again = await r.stampAsDevice('device-2', 'Europe/Warsaw');
   assert.deepEqual(again.body, first.body);
   // A later-claimed zone change is ignored; the first zone is sticky.
@@ -188,7 +194,7 @@ test('logged-in users stamp their own saved album and bump its revision', async 
   const r = route(Date.parse('2026-10-22T12:00:00Z'));
   const res = await r.stampAsUser(1, 'UTC');
   assert.equal(res.code, 200);
-  assert.deepEqual(res.body, { month: '2026-10', stamps: 1, lastStampDay: '2026-10-22', history: {}, timeZone: 'UTC' });
+  assert.deepEqual(res.body, { month: '2026-10', stamps: 1, lastStampDay: '2026-10-22', history: {}, timeZone: 'UTC', lastStampAt: Date.parse('2026-10-22T12:00:00Z') });
   assert.equal(r.saves.get(1).revision, 1);
   assert.deepEqual(r.saves.get(1).game_state.album,
     { timeZone: 'UTC', month: '2026-10', stamps: 1, lastDay: '2026-10-22', lastStampAt: Date.parse('2026-10-22T12:00:00Z'), history: {} });

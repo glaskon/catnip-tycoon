@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 
 const { pool } = require('../db');
 const { JWT_SECRET } = require('../auth');
-const { advanceAlbum, isIanaTimeZone, albumDayKey } = require('../album-logic');
+const { advanceAlbum, isIanaTimeZone, albumDayKey, noonEpochForDay } = require('../album-logic');
 
 function isDeviceId(v) {
   return typeof v === 'string' && /^[A-Za-z0-9-]{1,100}$/.test(v);
@@ -32,11 +32,16 @@ async function resolveIdentity(req) {
   return null;
 }
 
+// lastStampAt lets the client fold this response straight into the
+// game_state.album shape it already persists (timeZone/month/stamps/lastDay/
+// lastStampAt/history) without any client-side date math — see
+// public/js/album.js. Every loader/stamper below fills it in directly from
+// its own source of truth; toResponse never recomputes it.
 function toResponse(record) {
   return {
     month: record.month, stamps: record.stamps,
     lastStampDay: record.lastStampDay, history: record.history,
-    timeZone: record.timeZone,
+    timeZone: record.timeZone, lastStampAt: record.lastStampAt,
   };
 }
 
@@ -45,16 +50,18 @@ async function loadForUser(userId) {
   const album = result.rows[0] && result.rows[0].game_state.album;
   if (!album) return null;
   return { timeZone: album.timeZone, month: album.month, stamps: album.stamps,
-    lastStampDay: album.lastDay, history: album.history };
+    lastStampDay: album.lastDay, lastStampAt: album.lastStampAt, history: album.history };
 }
 
+// guest_albums has no epoch column (only day strings); reconstruct one that
+// reformats back to the stored day, so the shared response shape still works.
 async function loadForDevice(deviceId) {
   const result = await pool.query(
     'SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums WHERE device_id = $1', [deviceId]);
   if (!result.rows.length) return null;
   const row = result.rows[0];
-  return { timeZone: row.time_zone, month: row.month, stamps: row.stamps,
-    lastStampDay: row.last_stamp_day, history: row.history };
+  return { timeZone: row.time_zone, month: row.month, stamps: row.stamps, lastStampDay: row.last_stamp_day,
+    lastStampAt: row.last_stamp_day ? noonEpochForDay(row.last_stamp_day, row.time_zone) : null, history: row.history };
 }
 
 async function stampForUser(userId, now, requestedZone) {
@@ -72,14 +79,14 @@ async function stampForUser(userId, now, requestedZone) {
     // a repeat call must not spend a revision the client hasn't seen yet.
     if (current && next.lastStampDay === current.lastStampDay) {
       await client.query('COMMIT');
-      return { ...next, revision };
+      return { ...next, lastStampAt: gameState.album.lastStampAt, revision };
     }
     gameState.album = { timeZone: next.timeZone, month: next.month, stamps: next.stamps,
       lastDay: next.lastStampDay, lastStampAt: now, history: next.history };
     await client.query('UPDATE saves SET game_state = $1, revision = revision + 1 WHERE user_id = $2',
       [JSON.stringify(gameState), userId]);
     await client.query('COMMIT');
-    return { ...next, revision: revision + 1 };
+    return { ...next, lastStampAt: now, revision: revision + 1 };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -106,13 +113,13 @@ async function stampForDevice(deviceId, now, requestedZone) {
     const next = advanceAlbum(current, now, requestedZone);
     if (current && next.lastStampDay === current.lastStampDay) {
       await client.query('COMMIT');
-      return next;
+      return { ...next, lastStampAt: noonEpochForDay(current.lastStampDay, current.timeZone) };
     }
     await client.query(
       'UPDATE guest_albums SET time_zone=$1, month=$2, stamps=$3, last_stamp_day=$4, history=$5, updated_at=NOW() WHERE device_id=$6',
       [next.timeZone, next.month, next.stamps, next.lastStampDay, JSON.stringify(next.history), deviceId]);
     await client.query('COMMIT');
-    return next;
+    return { ...next, lastStampAt: noonEpochForDay(next.lastStampDay, next.timeZone) };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -134,7 +141,7 @@ router.get('/', async (req, res) => {
     const record = identity.userId ? await loadForUser(identity.userId) : await loadForDevice(identity.deviceId);
     const now = Date.now();
     res.json(toResponse(record || { timeZone: null, month: albumDayKey(now, 'UTC').slice(0, 7),
-      stamps: 0, lastStampDay: '', history: {} }));
+      stamps: 0, lastStampDay: '', lastStampAt: null, history: {} }));
   } catch (err) {
     console.error('[Album] Load error:', err.message);
     res.status(500).json({ error: 'Failed to load album' });

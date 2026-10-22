@@ -322,6 +322,7 @@
   "album.equip": "Wear",
   "album.visited": "Today’s visit recorded. Come back tomorrow.",
   "album.waiting": "Waiting for an online time check. No stamps are lost.",
+  "album.offline": "Showing your last saved stamps — offline. Nothing new is recorded until you're back online.",
   "album.calendar": "Album calendar: {zone}. This is your local zone from the first stamp; it stays fixed when you travel.",
   "album.history": "Previous albums",
   "album.earned": "Earned",

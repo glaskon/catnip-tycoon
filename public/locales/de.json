@@ -322,6 +322,7 @@
   "album.equip": "Anziehen",
   "album.visited": "Heutiger Besuch erfasst. Bis morgen.",
   "album.waiting": "Warte auf die Online-Zeitprüfung. Gesammelte Stempel bleiben erhalten.",
+  "album.offline": "Zeigt deine zuletzt gespeicherten Stempel — offline. Erst wieder online wird ein neuer Stempel erfasst.",
   "album.calendar": "Albumkalender: {zone}. Deine lokale Zone beim ersten Stempel bleibt auch auf Reisen bestehen.",
   "album.history": "Frühere Alben",
   "album.earned": "Erhalten",

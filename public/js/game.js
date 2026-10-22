@@ -1010,6 +1010,7 @@ function endStateTransition() {
   game.isReady = true;
   _stateTransition = false;
   if (typeof drawCat === 'function') drawCat();
+  if (typeof primeAlbumFromServer === 'function') primeAlbumFromServer();
   if (typeof refreshAlbum === 'function') refreshAlbum();
 }
 

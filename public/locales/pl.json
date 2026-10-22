@@ -322,6 +322,7 @@
   "album.equip": "Załóż",
   "album.visited": "Dzisiejsze wejście zapisane. Wróć jutro.",
   "album.waiting": "Czekamy na potwierdzenie czasu online. Zebrane pieczątki pozostają.",
+  "album.offline": "Pokazujemy ostatnio zapisane pieczątki — offline. Nic nowego nie zapiszemy, dopóki nie wrócisz do sieci.",
   "album.calendar": "Kalendarz albumu: {zone}. To Twoja lokalna strefa z pierwszej pieczątki; pozostaje stała także w podróży.",
   "album.history": "Poprzednie albumy",
   "album.earned": "Zdobyto",

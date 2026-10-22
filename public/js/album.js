@@ -1,6 +1,9 @@
-// Monthly cosmetic album. Only fresh server time can award a stamp; the
-// device wall clock is never consulted. The first local IANA zone is retained
-// (including its DST rules) so travelling cannot manufacture calendar days.
+// Monthly cosmetic album. The server is the sole owner of stamp progress
+// (decision 6B) — this file only displays what the server reports and, once
+// per visit, asks it to record today's stamp via POST /api/album/stamp. A
+// failed or offline request may still show the last known state as a
+// preview, but it must never grant a stamp locally: only a confirmed server
+// response can change game.album.
 let _albumRequest = null;
 let _albumGeneration = 0;
 let _albumTimeConfirmed = false;
@@ -9,14 +12,6 @@ function resetAlbumSession() {
   _albumGeneration++;
   _albumRequest = null;
   _albumTimeConfirmed = false;
-}
-
-function albumDateKey(timestamp, timeZone) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date(timestamp));
-  const part = type => parts.find(p => p.type === type).value;
-  return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
 function albumSkinId(month) { return 'skin_album_' + month; }
@@ -34,56 +29,62 @@ function albumSkinPalette(id) {
   };
 }
 
-function recordAlbumVisit(timestamp) {
-  if (!game.isReady || game.saveConflict || !Number.isSafeInteger(timestamp) || timestamp <= 0 || timestamp > 253402300799999) return false;
+// Folds a trusted /api/album(/stamp) response into the shape already
+// persisted at game.album (and validated by validateAlbumState), and awards
+// the 10th-stamp cosmetic if it is not owned yet. The stamp count itself is
+// always the server's; this never increments anything on its own.
+function applyAlbumResponse(response) {
   const previous = game.album;
-  const timeZone = previous ? previous.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const day = albumDateKey(timestamp, timeZone);
-  // High-water marks also reject a delayed response or backwards server time.
-  if (previous && (timestamp <= previous.lastStampAt || day <= previous.lastDay)) return false;
-  const month = day.slice(0, 7);
-  const album = previous || { timeZone, month, stamps: 0, lastDay: '', lastStampAt: 0, history: {} };
-  if (month !== album.month) {
-    album.history[album.month] = album.stamps;
-    album.month = month;
-    album.stamps = 0;
-  }
-  album.lastDay = day;
-  album.lastStampAt = timestamp;
-  // No backfilling missed days and no stamps beyond this month's ten slots.
-  album.stamps = Math.min(10, album.stamps + 1);
-  game.album = album;
+  const month = response.month;
+  const changed = !previous || previous.stamps !== response.stamps || previous.month !== month;
+  game.album = response.stamps >= 1 ? {
+    timeZone: response.timeZone, month: response.month, stamps: response.stamps,
+    lastDay: response.lastStampDay, lastStampAt: response.lastStampAt, history: response.history,
+  } : null;
   const id = albumSkinId(month);
-  if (album.stamps === 10 && !hasItem(id)) {
+  if (response.stamps === 10 && !hasItem(id)) {
     purchasedItems.push(id);
     savePurchasedItems();
     if (typeof drawCat === 'function') drawCat();
     showToast('🐾 ' + i18n.t('album.unlocked') + ' ' + albumSkinName(month));
   }
-  // State and cosmetic are in one snapshot, including for guests.
-  saveGame();
-  return true;
+  // State and cosmetic are in one snapshot, including for guests. Polling
+  // and the startup preview below call this often; only save when something
+  // actually moved, not on every idempotent same-day confirmation.
+  if (changed) saveGame();
+}
+
+// "Przy starcie: GET /api/album ... i ten stan pokazuję" (decision 6B) — a
+// fast, read-only preview of the server's last known state shown immediately
+// at startup, before refreshAlbum()'s slower stamp attempt below resolves.
+async function primeAlbumFromServer() {
+  if (!game.isReady || game.saveConflict) return;
+  try {
+    const response = await api.getAlbum(getDeviceId());
+    if (!game.isReady || game.saveConflict) return;
+    applyAlbumResponse(response);
+  } catch {
+    // Keep whatever local preview is already on screen; refreshAlbum retries.
+  } finally {
+    renderAlbum();
+  }
 }
 
 async function refreshAlbum() {
   if (!game.isReady || game.saveConflict || _albumRequest) return;
   const request = { generation: _albumGeneration };
   _albumRequest = request;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch('/api/health', { cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error('Album time unavailable');
-    const data = await response.json();
-    const timestamp = Date.parse(data.timestamp);
-    if (data.status !== 'ok' || !Number.isSafeInteger(timestamp) || timestamp <= 0 || timestamp > 253402300799999) throw new Error('Invalid album time');
+    const zone = game.album ? game.album.timeZone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const response = await api.stampAlbum(getDeviceId(), zone);
     if (request.generation !== _albumGeneration || !game.isReady || game.saveConflict) return;
     _albumTimeConfirmed = true;
-    recordAlbumVisit(timestamp);
+    applyAlbumResponse(response);
   } catch {
+    // Offline or erroring: keep showing the last known state (if any) as an
+    // unconfirmed preview. No stamp is granted outside a confirmed response.
     if (request.generation === _albumGeneration) _albumTimeConfirmed = false;
   } finally {
-    clearTimeout(timeout);
     if (_albumRequest === request) _albumRequest = null;
     renderAlbum();
   }
@@ -101,6 +102,14 @@ function albumRewardHTML(month, owned) {
     ${albumSkinName(month)}${owned ? ` <button class="btn btn-secondary btn-sm" onclick="equipAlbumSkin('${month}')">${i18n.t(game.equippedSkin === albumSkinId(month) ? 'wardrobe.equipped' : 'album.equip')}</button>` : ''}`;
 }
 
+// visited: a confirmed response arrived this session. offline: the server
+// could not be reached, but a previously confirmed state is on screen as a
+// preview. waiting: no confirmed state has ever arrived yet.
+function albumStatusKey() {
+  if (_albumTimeConfirmed) return 'album.visited';
+  return game.album ? 'album.offline' : 'album.waiting';
+}
+
 function renderAlbum() {
   const container = document.getElementById('albumContent');
   const summary = document.getElementById('albumSummary');
@@ -112,7 +121,7 @@ function renderAlbum() {
   }
   if (!container) return;
   let html = `<h3>🐾 ${i18n.t('album.title')}${album ? ' · ' + album.month : ''}</h3>`;
-  html += `<p>${i18n.t('album.description')}</p><p role="status">${count}/10 — ${i18n.t(_albumTimeConfirmed ? 'album.visited' : 'album.waiting')}</p>`;
+  html += `<p>${i18n.t('album.description')}</p><p role="status">${count}/10 — ${i18n.t(albumStatusKey())}</p>`;
   html += '<div class="album-stamps" aria-hidden="true">' + Array.from({ length: 10 }, (_, i) =>
     `<span class="album-stamp ${i < count ? 'album-stamped' : ''}">${i < count ? '🐾' : i + 1}</span>`).join('') + '</div>';
   if (album) {
