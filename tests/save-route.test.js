@@ -47,6 +47,7 @@ function route(now = Date.parse('2026-11-01T12:00:00Z')) {
       if (name === '../db') return { pool: { connect: async () => client } };
       if (name === '../auth') return { authMiddleware() {} };
       if (name === '../../public/js/save-progress') return require('../public/js/save-progress');
+      if (name === '../../public/js/cosmetic-state') return require('../public/js/cosmetic-state');
       if (name === '../../public/js/album-state') return require('../public/js/album-state');
       throw new Error('Unexpected dependency');
     },
@@ -377,4 +378,28 @@ test('backdated requests cannot simulate elapsed days against an unchanged serve
   assert.equal((await r.request(1, { album: albumAt('2026-10-02', 2) }, 1)).code, 400);
   assert.equal((await r.request(1, { album: albumAt('2026-10-22', 2) }, 1)).code, 200);
   assert.equal((await r.request(1, { album: albumAt('2026-10-22', 3) }, 2)).code, 400);
+});
+
+
+test('equipment save route accepts defaults and owned cosmetics, rejects unknown, unowned and wrong categories', async () => {
+  const c = createGame();
+  const fresh = JSON.parse(JSON.stringify(c.buildSaveState()));
+  assert.equal((await route().request(1, fresh)).code, 200);
+  const owned = { ...fresh, purchasedItems: ['skin_black', 'outfit_hat', 'skin_album_2026-10'],
+    gacha: { totalPulls: 1, pity: 0, counts: { effect_aurora: 1 } },
+    equippedSkin: 'skin_black', equippedOutfit: 'outfit_hat', equippedEffect: 'effect_aurora' };
+  assert.equal((await route().request(1, owned)).code, 200);
+  assert.equal((await route().request(1, { ...owned, equippedSkin: 'skin_album_2026-10' })).code, 200);
+  for (const [field, value] of [
+    ['equippedSkin', 'skin_unknown'], ['equippedSkin', 'skin_galaxy'],
+    ['equippedSkin', 'outfit_hat'], ['equippedOutfit', 'skin_black'],
+    ['equippedEffect', 'effect_unknown'], ['equippedEffect', 'effect_rainbow'],
+    ['equippedSkin', 'skin_album_2026-13'], ['equippedSkin', 7], ['equippedSkin', {}],
+  ]) {
+    assert.equal((await route().request(1, { ...owned, [field]: value })).code, 400, field + ': ' + value);
+  }
+  assert.equal((await route().request(1, { purchasedItems: ['skin_unknown'], equippedSkin: 'skin_unknown' })).code, 400);
+  const legacy = { ...owned };
+  for (const key of ['equippedSkin', 'equippedOutfit', 'equippedEffect']) delete legacy[key];
+  assert.equal((await route().request(1, legacy)).code, 200);
 });

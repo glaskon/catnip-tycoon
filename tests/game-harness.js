@@ -13,7 +13,7 @@ function createGame() {
     render() {}, showToast() {},
   });
   context.window = context;
-  for (const file of ['constants', 'album-state', 'game', 'achievements']) {
+  for (const file of ['constants', 'album-state', 'cosmetic-state', 'game', 'achievements']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js', file + '.js'), 'utf8'), context);
   }
   context.initGame();

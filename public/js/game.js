@@ -50,6 +50,11 @@ const game = {
   firstCatReward: null, // Cosmetic id from the one-time first-cat pull; survives prestige.
   gacha: null,    // {totalPulls, pity, counts} — lazy-init in getGacha()
 
+  // --- Equipped cosmetics (null keeps the default appearance) ---
+  equippedSkin: null,
+  equippedOutfit: null,
+  equippedEffect: null,
+
   // --- Collections ---
   cats: [],
   // Upgrades: [{id, nameKey, effect, cost, purchased | level, type}]
@@ -819,6 +824,9 @@ function buildSaveState() {
     album: game.album || null,
     gacha: game.gacha || null,
     firstCatReward: game.firstCatReward,
+    equippedSkin: game.equippedSkin,
+    equippedOutfit: game.equippedOutfit,
+    equippedEffect: game.equippedEffect,
     cats: game.cats.map(c => ({ id: c.id, count: c.count })),
     upgrades: game.upgrades.map(u => ({
       id: u.id,
@@ -903,6 +911,12 @@ function applyGameState(state, at = Date.now()) {
       if (typeof k === 'string' && k.length <= 100) game.gacha.counts[k] = safeNum(v, 0, 1000000);
     }
   }
+
+  // Missing, unknown, wrong-category or unowned choices fall back to default.
+  // Ownership collections remain intact, including legacy cosmetics.
+  game.equippedSkin = validateEquippedCosmetic(state.equippedSkin, 'skin', state) ? state.equippedSkin : null;
+  game.equippedOutfit = validateEquippedCosmetic(state.equippedOutfit, 'outfit', state) ? state.equippedOutfit : null;
+  game.equippedEffect = validateEquippedCosmetic(state.equippedEffect, 'effect', state) ? state.equippedEffect : null;
 
   // Restore cats
   const savedCats = Array.isArray(state.cats) ? state.cats : [];

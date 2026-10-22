@@ -6,6 +6,7 @@ const { pool } = require('../db');
 const { authMiddleware } = require('../auth');
 const { hasRealProgress } = require('../../public/js/save-progress');
 const { validateAlbumState } = require('../../public/js/album-state');
+const { validateEquippedCosmetic } = require('../../public/js/cosmetic-state');
 
 /**
  * GET /api/save
@@ -71,6 +72,7 @@ const STATE_SCHEMA = {
   album: 'album',
   gacha: 'gacha',
   firstCatReward: 'strOrNull',
+  equippedSkin: 'skin', equippedOutfit: 'outfit', equippedEffect: 'effect',
   cats: 'arrCats',
   upgrades: 'arrUpgrades',
   achievements: 'arrStrings',
@@ -122,6 +124,11 @@ function validateState(s) {
     if (!(k in STATE_SCHEMA)) return false; // unknown key
     const v = s[k];
     switch (STATE_SCHEMA[k]) {
+      case 'skin':
+      case 'outfit':
+      case 'effect':
+        if (!validateEquippedCosmetic(v, STATE_SCHEMA[k], s)) return false;
+        break;
       case 'prestigeMultiplier':
         if (!isFiniteNum(v) || v < 1 || v > 3) return false;
         break;
