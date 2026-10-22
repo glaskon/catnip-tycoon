@@ -600,13 +600,20 @@ function getCatnipNeeded() {
   // Both branches meet at next=21 (20 completed prestiges).
   const requirement = 10000000 * next * (next > 21 ? next / 21 : 1);
   if (game.prestigeCount < 100) return requirement;
-  // Intentional one-time exception to the ×3 step limit: 99→100 jumps ×113.4
+  // Intentional exception: the count-only requirement jumps ×113.4 at 99→100
   // to retain the goddess production bonus ×100 while keeping rounds in minutes.
-  // One phoenix at permanent ×3 takes 480s at 100, then +2.4s per prestige.
-  // Ascension compensation keeps time increasing even at production tier changes;
-  // every requirement step above 100 remains below ×3.
+  // Preserve the count-only formula; the production floor applies only at 100+.
   const ascension = 1 + Math.floor(game.prestigeCount / 10) * 0.05;
-  return 540000000000 * (ascension / 1.5) * (1 + (game.prestigeCount - 100) / 200);
+  const depth = 1 + (game.prestigeCount - 100) / 200;
+  const countRequirement = 540000000000 * (ascension / 1.5) * depth;
+  // 8/12/24 minutes at count 100/200/500, preserving the unupgraded phoenix.
+  // Read permanent sources directly, never cached FPS, pet, boosts or clicks.
+  const permanentProduction = getBaseCatProduction() * getPrestigeFishMultiplier();
+  const referenceProduction = 1250000 * getPrestigeFishMultiplier(game.prestigeCount, 3);
+  // countRequirement/referenceProduction = 480 * depth seconds. Normalize
+  // before multiplying to keep the reference threshold bit-for-bit unchanged.
+  const productionFloor = countRequirement * (permanentProduction / referenceProduction);
+  return Math.max(countRequirement, productionFloor);
 }
 
 // Fish awarded at reset; catnip is proportional to this reward, never run earnings.

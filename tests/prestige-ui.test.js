@@ -189,3 +189,28 @@ test('common render refreshes prestige even without an active panel and skips un
   c.tick();
   assert.match(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
 });
+
+test('panel, arming and confirmation enforce the live production floor after colony growth', () => {
+  const c = setupLivePanel();
+  c.game.prestigeCount = 200;
+  c.game.prestigeMultiplier = 3;
+  const phoenix = c.game.cats.find(cat => cat.id === 'kotfeniks');
+  phoenix.count = 5;
+  c.recalcFPS();
+  c.game.totalFishEarned = 1080000000000; // Previous count-only requirement.
+  c.render();
+  const panel = c.document.getElementById('prestigeContent');
+  assert.match(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
+  c.armPrestige();
+  assert.equal(c.document.getElementById('prestigeDialog').open, false);
+  c.game.totalFishEarned = c.getCatnipNeeded();
+  c.render();
+  assert.doesNotMatch(panel.innerHTML, /id="prestigeOpen"[^>]*disabled/);
+  c.armPrestige();
+  assert.equal(c.document.getElementById('prestigeDialog').open, true);
+  phoenix.count++;
+  c.confirmPrestige();
+  assert.equal(c.game.prestigeCount, 200);
+  assert.equal(c.document.getElementById('prestigeDialog').open, false);
+  assert.equal(c.saves, 0);
+});

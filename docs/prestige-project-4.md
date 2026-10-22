@@ -162,7 +162,9 @@ Po commicie 1: 45/45 testów. Po commicie 2: 47/47. Stan końcowy: **55/55 test�
 
 Praca wyłącznie na `dev`, trzy commity w kolejności 1→2→3, bez pushowania, zmian `main` i usuwania plików.
 
-## Decyzja 1A — wymagania od 100 ukończonych resetów (uzgodniony wyjątek)
+## Decyzja 1A — wymagania od 100 ukończonych resetów (historyczny wzór bazowy)
+
+Ta sekcja opisuje wzór sprzed podłogi produkcyjnej. Aktualny próg jest maksimum tego wzoru i podłogi opisanej w następnej sekcji. Benchmark „1 Feniks, zero ulepszeń” **nie jest reprezentatywny** dla rozwiniętych kolonii: pomija ulepszenia i gromadzenie Feniksów za zachowany catnip. Wcześniejsze wnioski o czasie rund dotyczą wyłącznie tej referencji.
 
 `c` oznacza `game.prestigeCount`, czyli liczbę ukończonych resetów, a nie numer następnego resetu.
 Dotychczasowy próg `W(c) = 10 000 000 × (c+1) × max(1, (c+1)/21)` zostaje dokładnie bez zmian dla `c < 100`.
@@ -179,7 +181,7 @@ Nie należy usuwać tego wyjątku jako błędnej rozbieżności: próg podskakuj
 Czynnik A kompensuje skoki produkcji co 10 prestiży. Pozostały czynnik rośnie liniowo, więc przy identycznej kolonii czas wzrasta na każdym poziomie.
 Dla każdego całkowitego `c ≥ 100` iloraz `W(c+1)/W(c)` jest nie większy niż `(1,55/1,5) × (201/200) = 1,0385 < 3`.
 Wymaganie przy 500 wynosi 3 780 000 000 000 ryb, czyli **7×** wymaganie przy 100 (limit: 150×).
-Próg nie zależy od stałego mnożnika gracza; bonusy produkcji pozostają bez zmian.
+Sam wzór bazowy nie zależy od stałego mnożnika gracza; aktualna podłoga już go uwzględnia. Bonusy produkcji pozostają bez zmian.
 
 Pomiar: jeden Kot Feniks (1 250 000 bazowych ryb/s wraz z własnym bonusem), bez ulepszeń, pupila, klikania, zakupów i boosterów. Czas = próg / rzeczywiste `fishPerSecond`; start od zerowego `totalFishEarned`.
 Dla `c ≥ 100` czas przy ×3 wynosi `480 × (1 + (c−100)/200)` sekund, a przy ×1 jest trzykrotnie dłuższy.
@@ -206,3 +208,69 @@ Klik i ranking pozostają bez zmian.
 Weryfikacja tej korekty: `node --test tests/*.test.js` — **114/114 testów w 11 plikach**, w tym 16 testów w `tests/prestige.test.js`; bez błędów i pominięć.
 `node --check` — wszystkie 39 plików JavaScript w `public/`, `server/` i `tests/`, bez błędów.
 `node /opt/data/ct_contract_check.js` — wszystko zgodne: 33 klucze klienta i walidatora, 30 porównanych pól bez zmian po zapisie i wczytaniu, poprawna obsługa starego zapisu.
+
+## Decyzja A Łukasza — podłoga według faktycznej trwałej produkcji
+
+Od `c = prestigeCount = 100` wymaganie wynosi `max(W(c), T(c) × P)`. Dla `c < 100` obowiązuje wyłącznie niezmieniony liczbowo wzór historyczny. `W(c)` to dokładnie dotychczasowy wzór z sekcji 1A, z zachowaną kolejnością działań i skokiem na 99→100.
+
+- `P = getBaseCatProduction() × getPrestigeFishMultiplier()` — aktualne koty, globalne bonusy Magów i Feniksów, catspeed, karma, buda, megakarma, catnipmastery oraz wszystkie stałe bonusy prestiżu (w tym ×1…×3 i Kot Bogini).
+- `T(c) = 480 × (1 + (c−100)/200)` sekund: 8 min przy 100, 12 min przy 200, 24 min przy 500; +2,4 s na każdy kolejny prestiż.
+- Podłoga pomija eliksir, sklepowy boost produkcji, quantum karma, nastrój pupila, mnożniki kliku i szybkości oraz autoclicker. Nie czyta buforowanego `fishPerSecond`. Przy zerowej produkcji kotów wynosi 0.
+
+Wskazane w zleceniu 10/15/25–30 min były orientacyjne. Przy referencji ×3 dotychczasowe czasy wynoszą 8/12/24 min, więc wyższy czas podłogi zmieniłby tę referencję. Wybrano rosnącą funkcję zgodną z twardym warunkiem regresji. Dla referencji ×1 stary wzór wygrywa, a dla ×3 obie wartości są równe.
+
+Implementacja liczy podłogę równoważnie jako `W(c) × (P / P_ref(c))`, gdzie `P_ref(c) = 1 250 000 × getPrestigeFishMultiplier(c, 3)`. Ponieważ `W/P_ref = T`, jest to ten sam wzór. Dzielenie produkcji przed mnożeniem gwarantuje dokładne `P/P_ref = 1` dla referencji i chroni stare wartości przed różnicą ostatniego bitu zmiennoprzecinkowego. Referencja służy tu tylko normalizacji arytmetyki i kontroli regresji, nie modelowaniu mocnego gracza.
+
+Kolejność: `getCatnipNeeded()` → stary próg → powrót dla `c < 100` → bieżąca trwała produkcja → podłoga → `max`. Ten sam wynik trafia do paska/licznika w `render()`, panelu prestiżu, `armPrestige()`, ponownej kontroli w `confirmPrestige()` i końcowej blokady w `prestige()` przed wypłatą/resetem. Zakup może podnieść próg także po otwarciu potwierdzenia; ponowna kontrola blokuje wtedy reset. Nie trzeba czekać na `recalcFPS()`.
+
+### Pomiar przed/po
+
+Stała kolonia od początku rundy, `totalFishEarned = 0`, bez zakupów w trakcie, klikania, autoclickera, pupila i boostów. Czas = wymaganie / produkcja. ×1 i ×3 oznaczają `prestigeMultiplier`; pozostałe bonusy progowe działają normalnie. Ulepszenia w każdym mocnym wariancie: karma, megakarma, catnipmastery, buda (łącznie ×30). To czas zebrania progu przy określonej produkcji, nie symulacja odbudowy kolonii.
+
+| Prestiż | Feniksy + ulepszenia | Przed ×1 (s) | Po ×1 (min) | Przed ×3 (s) | Po ×3 (min) |
+|---:|---:|---:|---:|---:|---:|
+| 200 | 1 | 72 | 12 | 24 | 12 |
+| 200 | 5 | 8 | 12 | 2,666667 | 12 |
+| 200 | 20 | 0,75 | 12 | 0,25 | 12 |
+| 200 | 100 | 0,034615 | 12 | 0,011538 | 12 |
+| 500 | 1 | 144 | 24 | 48 | 24 |
+| 500 | 5 | 16 | 24 | 5,333333 | 24 |
+| 500 | 20 | 1,5 | 24 | 0,5 | 24 |
+| 500 | 100 | 0,069231 | 24 | 0,023077 | 24 |
+
+Wszystkie 16 mocnych konfiguracji podnosi podłoga i wszystkie mieszczą się w 5–30 min. Ze szczęśliwym pupilem należy podzielić **zarówno przed, jak i po** przez 1,1: nowe czasy to 654,545455 s (10:54,55) przy 200 i 1309,090909 s (21:49,09) przy 500, dla obu mnożników i wszystkich czterech kolonii. To wyjaśnia wcześniejszy pomiar 21,8 s dla jednego ulepszonego Feniksa przy 200/×3: `24/1,1 = 21,818182 s`.
+
+| Referencja: 1 Feniks bez ulepszeń | Próg przed = po (ryby) | ×1 przed → po (min) | ×3 przed → po (min) |
+|---:|---:|---:|---:|
+| 100 | 540 000 000 000 | 24 → 24 | 8 → 8 |
+| 200 | 1 080 000 000 000 | 36 → 36 | 12 → 12 |
+| 500 | 3 780 000 000 000 | 72 → 72 | 24 → 24 |
+
+Referencja pozostaje identyczna także ze szczęśliwym pupilem (czasy przed i po dzielone przez 1,1). Długie rundy ×1 są zamierzone; limit 30 min ich nie obejmuje. Dla `c=24` pozostaje 297 619 047,61904764 (wyświetlane 297 619 048), dla `c=99` 4 761 904 761,904762 (wyświetlane 4 761 904 762); wszystkie `c=0…99` sprawdzane są też z mocną kolonią.
+
+### Stany chwilowe: identyczny próg
+
+Prestiż 200, 1 Feniks + cztery ulepszenia. Każdy bonus włączony osobno, pozostałe nieaktywne:
+
+| Stan | Wymaganie ×1 (ryby) | Wymaganie ×3 (ryby) |
+|---|---:|---:|
+| Przed: bez bonusu chwilowego | 10 800 000 000 000 | 32 400 000 000 000 |
+| Po: eliksir ×10 / 30 s | 10 800 000 000 000 | 32 400 000 000 000 |
+| Po: sklep ×2 / 1 h | 10 800 000 000 000 | 32 400 000 000 000 |
+| Po: szczęśliwy pupil +10% | 10 800 000 000 000 | 32 400 000 000 000 |
+| Po: quantum karma ×10 | 10 800 000 000 000 | 32 400 000 000 000 |
+| Po: boost kliku/szybkości i ulepszenia kliku | 10 800 000 000 000 | 32 400 000 000 000 |
+
+Równość pozostaje po wygaśnięciu bonusów oraz przy ich łącznej aktywacji. Boosty nadal mogą skrócić rundę poniżej 5 min — to celowy efekt zakupu, a podłoga go nie odbiera. Przedział 5–30 dotyczy powyższych pomiarów bez boosterów; przy pupilu również jest spełniony.
+
+### Audyt zmniejszania produkcji
+
+W normalnej rundzie brak sprzedaży/oddawania kotów, śmierci kotów, zdejmowania albo zwrotu ulepszeń produkcji. `buyPurchase()` tylko zwiększa liczby kotów/poziomy lub ustawia zakup; wydanie ryb czy catnipu nie zmniejsza produkcji. `prestige()` zmniejsza kolonię i resetuje ulepszenia rybne dopiero razem ze zwiększeniem `prestigeCount`. Wygaśnięcie boostu i pogorszenie nastroju obniżają jedynie produkcję chwilową. `previewPurchase()` chwilowo zwiększa stan i przywraca go w synchronicznym `finally`; nie wywołuje prestiżu i nie pozostawia niższego progu.
+
+**Ścieżka zastąpienia stanu istnieje:** `loadLocalGame()` / `loadGame()` → `restoreWithOffline()` → `applyGameState()` wczytuje cały zapis. Inny lub starszy zapis (np. stan konta zastępujący gościa) może mieć mniej kotów/ulepszeń przy takim samym `prestigeCount`, więc jego próg będzie niższy. Zastępuje też `totalFishEarned`; nie jest to sprzedaż kolonii z zachowaniem zarobku bieżącej rundy. Nie dodano historycznego maksimum ani nowego pola zapisu. Podłoga gwarantuje brak obniżania progu przez dostępne akcje rozwoju w tej samej rundzie, nie przez podmianę zapisu lub ręczną edycję stanu.
+
+### Testy tej korekty
+
+`tests/prestige-production.test.js`: 7 nowych testów — 16 mocnych konfiguracji, referencja liczbowo identyczna aż do 10 000, wszystkie progi poniżej 100, zerowa produkcja, boosty i prawdziwy moduł Cat Life, trwałe składniki i zapis/odczyt, zakup/podgląd/reset oraz wzrost czasu na każdym poziomie. `tests/prestige-ui.test.js`: dodatkowy test panelu, otwarcia i ponownej kontroli progu po wzroście kolonii. Wcześniejsze testy prestiżu pozostają bez osłabiania asercji.
+
+Weryfikacja commitu balansu: `node --test tests/*.test.js` — **160/160**, bez pominięć; `node --check` — **49 plików** w `public/`, `server/`, `tests/`; `git diff --check` bez błędów. `node /opt/data/ct_contract_check.js` — **36 kluczy klienta = 36 kluczy walidatora**, 33 pola przechodzą zapis/odczyt bez zmian, stary zapis zgodny.
