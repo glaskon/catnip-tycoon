@@ -212,17 +212,21 @@ test('receipt preservation list matches the actual cats and upgrades after reset
   assert.deepEqual(Array.from(receipt.upgrades, u => u.id), Array.from(c.game.upgrades.filter(u => c.hasUpgrade(u.id)), u => u.id));
 });
 
-test('all requirements through count 100 stay numerically identical to the old formula', () => {
+test('all requirements below count 100 stay numerically identical to the old formula', () => {
   const c = setup();
-  for (let count = 0; count <= 100; count++) {
+  for (let count = 0; count < 100; count++) {
     c.game.prestigeCount = count;
     const next = count + 1;
     assert.equal(c.getCatnipNeeded(), 10000000 * next * (next > 21 ? next / 21 : 1), `count=${count}`);
   }
-  assert.equal(c.getCatnipNeeded(), 4857619047.619047);
+  assert.equal(c.getCatnipNeeded(), 4761904761.904762);
+  assert.equal(Math.round(c.getCatnipNeeded()), 4761904762);
+  c.game.prestigeCount = 24;
+  assert.equal(c.getCatnipNeeded(), 297619047.61904764);
+  assert.equal(Math.round(c.getCatnipNeeded()), 297619048);
 });
 
-test('one phoenix takes at least five minutes and strictly longer at every depth after count 100', () => {
+test('one phoenix takes at least five minutes and strictly longer at every count from 100 through 10000', () => {
   const c = setup();
   c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
   for (const multiplier of [1, 3]) {
@@ -231,7 +235,7 @@ test('one phoenix takes at least five minutes and strictly longer at every depth
     c.recalcFPS();
     let previous = c.getCatnipNeeded() / c.game.fishPerSecond;
     // Include every ascension step, not only the seven report samples.
-    for (let count = 101; count <= 500; count++) {
+    for (let count = 100; count <= 10000; count++) {
       c.game.prestigeCount = count;
       c.recalcFPS();
       const seconds = c.getCatnipNeeded() / c.game.fishPerSecond;
@@ -243,14 +247,42 @@ test('one phoenix takes at least five minutes and strictly longer at every depth
   }
 });
 
-test('protected count 100 still has the documented seconds-long reset with the retained goddess bonus', () => {
+test('one phoenix matches the agreed reset times with both permanent multipliers', () => {
   const c = setup();
   c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
-  c.game.prestigeCount = 100;
-  for (const multiplier of [1, 3]) {
-    c.game.prestigeMultiplier = multiplier;
-    c.recalcFPS();
-    close(c.game.fishPerSecond, 375000000 * multiplier);
-    close(c.getCatnipNeeded() / c.game.fishPerSecond, 12.953650793650793 / multiplier);
+  for (const [count, secondsAtThree] of [[99, 438], [100, 480], [110, 504], [150, 600], [200, 720], [300, 960], [500, 1440]]) {
+    c.game.prestigeCount = count;
+    const requirement = c.getCatnipNeeded();
+    for (const multiplier of [1, 3]) {
+      c.game.prestigeMultiplier = multiplier;
+      c.recalcFPS();
+      assert.equal(c.getCatnipNeeded(), requirement); // Independent of the player's multiplier.
+      const seconds = requirement / c.game.fishPerSecond;
+      const expected = secondsAtThree * 3 / multiplier;
+      if (count === 99) assert.equal(Math.round(seconds), expected); // Unchanged fractional threshold.
+      else close(seconds, expected);
+      if (count === 100) close(c.game.fishPerSecond, 375000000 * multiplier);
+    }
   }
+});
+
+test('99 to 100 is the intentional x113.4 exception; later requirement steps stay within x3', () => {
+  const c = setup();
+  c.game.prestigeCount = 99;
+  const beforeBoundary = c.getCatnipNeeded();
+  c.game.prestigeCount = 100;
+  const atBoundary = c.getCatnipNeeded();
+  assert.equal(atBoundary, 540000000000);
+  close(atBoundary / beforeBoundary, 113.4);
+  let previous = atBoundary;
+  for (let count = 101; count <= 10000; count++) {
+    c.game.prestigeCount = count;
+    const requirement = c.getCatnipNeeded();
+    assert.ok(requirement > previous, `count=${count}: requirement must increase`);
+    assert.ok(requirement / previous <= 3, `count=${count}: step exceeds x3`);
+    previous = requirement;
+  }
+  c.game.prestigeCount = 500;
+  assert.ok(c.getCatnipNeeded() / atBoundary <= 150);
+  close(c.getCatnipNeeded() / atBoundary, 7);
 });

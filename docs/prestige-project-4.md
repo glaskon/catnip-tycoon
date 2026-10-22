@@ -162,28 +162,47 @@ Po commicie 1: 45/45 testów. Po commicie 2: 47/47. Stan końcowy: **55/55 test�
 
 Praca wyłącznie na `dev`, trzy commity w kolejności 1→2→3, bez pushowania, zmian `main` i usuwania plików.
 
-## Decyzja 1A — wymagania po 100 ukończonych resetach
+## Decyzja 1A — wymagania od 100 ukończonych resetów (uzgodniony wyjątek)
 
 `c` oznacza `game.prestigeCount`, czyli liczbę ukończonych resetów, a nie numer następnego resetu.
-Dotychczasowy próg `W(c) = 10 000 000 × (c+1) × max(1, (c+1)/21)` zostaje dokładnie bez zmian dla `c ≤ 100`.
-Dla `c > 100` nowy próg to `W(c) × 100 × A(c)/1,5`, gdzie `A(c) = 1 + floor(c/10) × 0,05`.
-Bonus produkcji ×100 zostaje. Czynnik A kompensuje skoki produkcji co 10 prestiży, więc przy identycznej kolonii czas rośnie jak `(c+1)²`, także na granicach dziesiątek. Próg nie zależy od mnożnika stałego gracza.
+Dotychczasowy próg `W(c) = 10 000 000 × (c+1) × max(1, (c+1)/21)` zostaje dokładnie bez zmian dla `c < 100`.
+Od `c = 100` obowiązuje:
 
-Pomiar: jeden Kotfeniks (1 250 000 bazowych ryb/s wraz z własnym bonusem), bez ulepszeń, pupila, klikania, zakupów i boosterów. Czas = próg / rzeczywiste `fishPerSecond`; start od zerowego `totalFishEarned`.
+`W(c) = 540 000 000 000 × A(c)/1,5 × (1 + (c−100)/200)`, gdzie `A(c) = 1 + floor(c/10) × 0,05`.
 
-| Ukończone prestiże | Stary czas ×1 (min) | Nowy czas ×1 (min) | Nowy czas ×3 (min) |
-|---:|---:|---:|---:|
-| 99 | 21,893815 | 21,893815 | 7,297938 |
-| 100 | 0,215894 | 0,215894 | 0,071965 |
-| 101 | 0,220190 | 22,019048 | 7,339683 |
-| 110 | 0,252350 | 26,076190 | 8,692063 |
-| 150 | 0,413624 | 48,256085 | 16,085362 |
-| 200 | 0,641286 | 85,504762 | 28,501587 |
-| 300 | 1,150489 | 191,748148 | 63,916049 |
-| 500 | 2,276653 | 531,219048 | 177,073016 |
+**Przejście 99→100 to świadomy, jednorazowy wyjątek od limitu skoku wymagania ×3: próg rośnie ×113,4.**
+Wymaganie przy 99 pozostaje równe 4 761 904 761,904762 ryby, a przy 100 wynosi 540 000 000 000 ryb.
+Skok wynika z decyzji o zachowaniu bonusu produkcji Kot Bogini ×100 przy 100 ukończonych prestiżach.
+Nie należy usuwać tego wyjątku jako błędnej rozbieżności: próg podskakuje razem z bonusem, aby czas rundy nadal wynosił minuty.
 
-Porównanie chronionych progów (ryby, przed = po): `c=0`: 10 000 000; `c=20`: 210 000 000; `c=99`: 4 761 904 761,904762; `c=100`: 4 857 619 047,619047. Test porównuje wszystkie 101 wartości `c=0…100` ścisłym `assert.equal`.
+**Powyżej 100 limit ×3 nadal obowiązuje**, również dla kroku 100→101 i na granicach dziesiątek.
+Czynnik A kompensuje skoki produkcji co 10 prestiży. Pozostały czynnik rośnie liniowo, więc przy identycznej kolonii czas wzrasta na każdym poziomie.
+Dla każdego całkowitego `c ≥ 100` iloraz `W(c+1)/W(c)` jest nie większy niż `(1,55/1,5) × (201/200) = 1,0385 < 3`.
+Wymaganie przy 500 wynosi 3 780 000 000 000 ryb, czyli **7×** wymaganie przy 100 (limit: 150×).
+Próg nie zależy od stałego mnożnika gracza; bonusy produkcji pozostają bez zmian.
 
-**Niespełnione kryteria:** przy 100 nadal jest 12,95 s (×1) / 4,32 s (×3), a więc nie ma 5–15 min ani monotoniczności całej listy 99→100→110. Zachowanie niezmiennego wymagania dla `c ≤ 100` i bonusu ×100 uniemożliwia spełnienie tych warunków przez zmianę progu. Dodatkowo 21,89 min przy 99 dla ×1 już przekracza górną granicę 15 min żądaną przy 100. Od 101 każdy kolejny czas do 500 jest dłuższy i wynosi ≥5 min w obu wariantach; test sprawdza wszystkie poziomy, nie tylko wiersze tabeli. Wysokie poziomy mogą trwać godziny.
+Pomiar: jeden Kot Feniks (1 250 000 bazowych ryb/s wraz z własnym bonusem), bez ulepszeń, pupila, klikania, zakupów i boosterów. Czas = próg / rzeczywiste `fishPerSecond`; start od zerowego `totalFishEarned`.
+Dla `c ≥ 100` czas przy ×3 wynosi `480 × (1 + (c−100)/200)` sekund, a przy ×1 jest trzykrotnie dłuższy.
+Zatem żaden poziom `c ≥ 100` w tym modelu nie wraca do rund trwających sekundy: minimum to 8 minut przy ×3 i 24 minuty przy ×1.
 
-Pomiary ze zlecenia pozostają punktem odniesienia: ~13 s przy 100, ~39 s przy 200 i ~3 min przy 500 dotyczą ×1; ~7 min przy 99 odpowiada ×3. Powyższa tabela pokazuje obie konfiguracje osobno, bez zmiany tych danych odniesienia.
+| Ukończone prestiże | Czas ×3 (min:s) | Czas ×1 (min:s) |
+|---:|---:|---:|
+| 99 | 7:18 | 21:54 |
+| 100 | 8:00 | 24:00 |
+| 110 | 8:24 | 25:12 |
+| 150 | 10:00 | 30:00 |
+| 200 | 12:00 | 36:00 |
+| 300 | 16:00 | 48:00 |
+| 500 | 24:00 | 72:00 |
+
+Tabela jest zgodna z uzgodnionym wariantem. Przy 99 prezentacja zaokrągla do pełnej sekundy: dokładnie około 437,876 s przy ×3 i 1313,629 s przy ×1. Pozostałe wiersze są dokładne z tolerancją arytmetyki zmiennoprzecinkowej.
+Porównanie chronionych progów (ryby, przed = po): `c=0`: 10 000 000; `c=20`: 210 000 000; `c=24`: 297 619 047,61904764 (po zaokrągleniu 297 619 048); `c=99`: 4 761 904 761,904762.
+Test porównuje wszystkie 100 wartości `c=0…99` ścisłym `assert.equal`.
+
+Testy obejmują oba mnożniki i wszystkie wiersze tabeli, zachowany bonus ×100, niezależność wymagania od mnożnika gracza, wyjątek ×113,4, limit ×3 dla każdego kroku powyżej 100 aż do 10 000 oraz limit 500/100 ≤150×.
+Dodatkowo sprawdzają czas ≥5 minut i ścisły wzrost czasu na każdym poziomie od 100 do 10 000 dla obu mnożników, włącznie z przejściem 99→100 i granicami dziesiątek.
+Klik i ranking pozostają bez zmian.
+
+Weryfikacja tej korekty: `node --test tests/*.test.js` — **114/114 testów w 11 plikach**, w tym 16 testów w `tests/prestige.test.js`; bez błędów i pominięć.
+`node --check` — wszystkie 39 plików JavaScript w `public/`, `server/` i `tests/`, bez błędów.
+`node /opt/data/ct_contract_check.js` — wszystko zgodne: 33 klucze klienta i walidatora, 30 porównanych pól bez zmian po zapisie i wczytaniu, poprawna obsługa starego zapisu.

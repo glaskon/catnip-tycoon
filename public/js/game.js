@@ -594,11 +594,14 @@ function getCatnipNeeded() {
   const next = game.prestigeCount + 1;
   // Both branches meet at next=21 (20 completed prestiges).
   const requirement = 10000000 * next * (next > 21 ? next / 21 : 1);
-  if (game.prestigeCount <= 100) return requirement;
-  // Offset the goddess bonus and ascension steps after the protected boundary.
-  // With identical cats, reset time now grows as next², including tier changes.
+  if (game.prestigeCount < 100) return requirement;
+  // Intentional one-time exception to the ×3 step limit: 99→100 jumps ×113.4
+  // to retain the goddess production bonus ×100 while keeping rounds in minutes.
+  // One phoenix at permanent ×3 takes 480s at 100, then +2.4s per prestige.
+  // Ascension compensation keeps time increasing even at production tier changes;
+  // every requirement step above 100 remains below ×3.
   const ascension = 1 + Math.floor(game.prestigeCount / 10) * 0.05;
-  return requirement * 100 * ascension / 1.5;
+  return 540000000000 * (ascension / 1.5) * (1 + (game.prestigeCount - 100) / 200);
 }
 
 // Fish awarded at reset; catnip is proportional to this reward, never run earnings.
