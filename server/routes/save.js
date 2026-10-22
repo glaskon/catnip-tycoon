@@ -271,6 +271,15 @@ async function loadGuestAlbumForTransplant(client, deviceId, userId, now = Date.
  */
 router.post('/', authMiddleware, async (req, res) => {
   const { game_state, expected_revision, migration_id, device_id } = req.body;
+  // Decision 6B: a guest import's album only ever comes from this device's
+  // own guest_albums record (loadGuestAlbumForTransplant below), never from
+  // the payload. Discard the payload's claim here, before validateState even
+  // looks at it, so a missing/malformed/forged album of any shape can never
+  // fail structural validation and sink the rest of the import (fish, cats,
+  // etc.) along with it.
+  if (migration_id && game_state && typeof game_state === 'object' && !Array.isArray(game_state)) {
+    game_state.album = null;
+  }
   if (!validateState(game_state) || !Number.isInteger(expected_revision) || expected_revision < 0 ||
       (migration_id !== undefined && !isId(migration_id)) ||
       (device_id !== undefined && device_id !== null && !isId(device_id))) {

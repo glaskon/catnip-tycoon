@@ -413,24 +413,50 @@ test('normal saves and guest imports without albums still work and cannot erase 
   assert.equal((await r.request(1, { album: { ...album, stamps: 2 } }, 4)).code, 400);
 });
 
-test('malformed album shapes are rejected before any import check runs; a well-shaped but unverified one still imports with no album', async () => {
-  const r = route();
+test('malformed or garbage album shapes in a guest import are discarded before validation, not rejected; a well-shaped but unverified one still imports with no album', async () => {
   const album = albumAt('2026-10-22', 4, { '2026-09': 10 });
   const state = { fish: 42, guestMigrationId: 'bad-album', album };
-  const before = structuredClone(r.saves.get(1));
   for (const invalid of [
     { ...album, month: '2026-09' }, { ...album, timeZone: null },
     ...[0, 11, 1.5].map(stamps => ({ ...album, stamps })),
     { ...album, history: { '2026-10': 10 } }, { ...album, history: { '2026-11': 10 } },
+    'not an object', 42, [], true,
   ]) {
-    assert.equal((await r.request(1, { ...state, album: invalid }, 0, 'bad-album')).code, 400);
-    assert.equal(r.receipts.size, 0);
-    assert.deepEqual(r.saves.get(1), before);
+    // Fresh account each time: the import consumes its migration_id on success.
+    const r = route();
+    const result = await r.request(1, { ...state, album: invalid }, 0, 'bad-album');
+    assert.equal(result.code, 200);
+    assert.equal(r.receipts.get('bad-album'), 1);
+    assert.equal(r.saves.get(1).game_state.fish, 42);
+    assert.equal(r.saves.get(1).game_state.album, null);
   }
   // Well-shaped, but still only the client's claim — decision 6B discards it.
   // The import itself succeeds (fish alone is real progress); the album does not.
+  const r = route();
   assert.equal((await r.request(1, state, 0, 'bad-album')).code, 200);
   assert.equal(r.saves.get(1).game_state.album, null);
+});
+
+test('a guest import carrying a local album is accepted and takes its album from the server', async () => {
+  // Mirrors public/js/album.js: once a guest has >=1 stamp, game.album is an
+  // object (never null), and buildSaveState() sends it as-is on registration.
+  // That object must never be what ends up on the account — only the
+  // device's own guest_albums record may, and a malformed/forged/stale local
+  // claim of any stamp count must not sink the rest of the import either.
+  for (const localStamps of [0, 1, 3, 10]) {
+    const r = route();
+    const deviceId = `device-local-${localStamps}`;
+    const serverAlbum = albumAt('2026-10-22', 1, { '2026-09': 10 });
+    r.seedGuestAlbum(deviceId, serverAlbum);
+    const id = `local-album-${localStamps}`;
+    const localAlbum = localStamps === 0 ? null : albumAt('2026-10-22', localStamps);
+    const state = { fish: 777, cats: [{ id: 'tabby', count: 2 }], totalCatsBought: 2,
+      guestMigrationId: id, album: localAlbum };
+    const result = await r.request(1, state, 0, id, deviceId);
+    assert.equal(result.code, 200);
+    assert.equal(r.saves.get(1).game_state.fish, 777);
+    assert.deepEqual(r.saves.get(1).game_state.album, serverAlbum);
+  }
 });
 
 test('guest migration metadata alone cannot bypass the new-account stamp limit', async () => {
