@@ -325,5 +325,17 @@
   "album.calendar": "Calendario del álbum: {zone}. Es tu zona local del primer sello; permanece fija al viajar.",
   "album.history": "Álbumes anteriores",
   "album.earned": "Conseguido",
-  "album.missed": "No conseguido"
+  "album.missed": "No conseguido",
+  "wardrobe.title": "Guardarropa",
+  "wardrobe.skin": "Apariencias",
+  "wardrobe.outfit": "Atuendos",
+  "wardrobe.effect": "Efectos",
+  "wardrobe.default": "Aspecto predeterminado",
+  "wardrobe.equip": "Equipar",
+  "wardrobe.equipped": "Equipado",
+  "wardrobe.owned": "En tu colección",
+  "wardrobe.locked": "Sin obtener",
+  "wardrobe.source.shop": "Tienda",
+  "wardrobe.source.gacha": "Sorteo",
+  "wardrobe.source.album": "Álbum del mes {month}"
 }

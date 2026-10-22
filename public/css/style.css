@@ -980,3 +980,19 @@ html, body {
 .album-calendar { color: var(--text-secondary); font-size: 0.8rem; }
 .album-history { padding-left: 20px; }
 .album-history li { margin: 12px 0; }
+
+
+/* --- Wardrobe --- */
+.wardrobe-section { margin-bottom: 24px; }
+.wardrobe-grid { margin-top: 12px; }
+.wardrobe-source { color: var(--text-secondary); font-size: 0.75rem; }
+.wardrobe-status { font-size: 0.8rem; }
+.wardrobe-locked { opacity: 0.65; }
+.wardrobe-equipped { border-color: var(--success); }
+.wardrobe-equipped .wardrobe-status { color: var(--success); font-weight: bold; }
+#wardrobeOpen { margin-top: 8px; }
+
+@media (max-width: 767px) {
+  #sidebar { overflow-x: auto; justify-content: flex-start; }
+  #sidebar .nav-btn { flex-shrink: 0; }
+}

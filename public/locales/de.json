@@ -325,5 +325,17 @@
   "album.calendar": "Albumkalender: {zone}. Deine lokale Zone beim ersten Stempel bleibt auch auf Reisen bestehen.",
   "album.history": "Frühere Alben",
   "album.earned": "Erhalten",
-  "album.missed": "Nicht erhalten"
+  "album.missed": "Nicht erhalten",
+  "wardrobe.title": "Garderobe",
+  "wardrobe.skin": "Fellfarben",
+  "wardrobe.outfit": "Outfits",
+  "wardrobe.effect": "Effekte",
+  "wardrobe.default": "Standardaussehen",
+  "wardrobe.equip": "Anlegen",
+  "wardrobe.equipped": "Angelegt",
+  "wardrobe.owned": "Im Besitz",
+  "wardrobe.locked": "Nicht im Besitz",
+  "wardrobe.source.shop": "Shop",
+  "wardrobe.source.gacha": "Ziehung",
+  "wardrobe.source.album": "Monatsalbum {month}"
 }

@@ -23,7 +23,7 @@ function setup(zone = 'Europe/Warsaw') {
   c.AbortController = AbortController;
   c.setTimeout = setTimeout;
   c.clearTimeout = clearTimeout;
-  for (const name of ['escape', 'shop', 'album']) load(c, name);
+  for (const name of ['escape', 'shop', 'gacha', 'album', 'wardrobe']) load(c, name);
   c.game.isReady = true;
   return c;
 }
@@ -92,9 +92,11 @@ test('tenth stamp awards only a cosmetic; later days cap at ten, next month reta
   assert.equal(clone.hasItem('skin_album_2026-11'), false);
   for (let day = 2; day <= 10; day++) visit(clone, `2026-11-${String(day).padStart(2, '0')}T12:00:00Z`);
   assert.equal(clone.hasItem('skin_album_2026-11'), true);
-  assert.equal(clone.lastOwned('skin_'), 'skin_album_2026-11');
+  assert.equal(clone.game.equippedSkin, null);
+  clone.drawCat = () => {};
   clone.equipAlbumSkin('2026-10');
-  assert.equal(clone.lastOwned('skin_'), 'skin_album_2026-10');
+  assert.equal(clone.game.equippedSkin, 'skin_album_2026-10');
+  assert.deepEqual(Array.from(clone.purchasedItems), ['skin_album_2026-10', 'skin_album_2026-11']);
   assert.equal(clone.purchasedItems.length, 2);
   assert.notDeepEqual(clone.albumSkinPalette('skin_album_2026-10'), clone.albumSkinPalette('skin_album_2026-11'));
   clone.game.totalFishEarned = clone.getCatnipNeeded();
@@ -193,6 +195,8 @@ test('history is visible and earned skins actually reach the canvas after restor
   c.renderAlbum();
   assert.match(panel.innerHTML, /2026-10 · 10\/10 · album.earned/);
   assert.match(panel.innerHTML, /equipAlbumSkin\('2026-10'\)/);
+  c.drawCat = () => {};
+  c.equipAlbumSkin('2026-10');
   const clone = setup();
   clone.applyGameState(saved(c));
   const colors = [];

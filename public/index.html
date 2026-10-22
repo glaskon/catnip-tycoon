@@ -40,6 +40,7 @@
         <button class="nav-btn" data-panel="upgrades" title="Upgrades">⬆️</button>
         <button class="nav-btn" data-panel="prestige" title="Prestige">✨</button>
         <button class="nav-btn" data-panel="shop" title="Shop">🛒</button>
+        <button id="wardrobeNav" class="nav-btn" data-panel="wardrobe">👒</button>
         <button class="nav-btn" data-panel="gacha" title="Gacha">🎰</button>
         <button class="nav-btn" data-panel="catlife" title="Cat Life">🐾</button>
         <button class="nav-btn" data-panel="daily" title="Daily">🎁</button>
@@ -85,6 +86,7 @@
           </div>
           <div id="purchaseSuggestions"></div>
           <div id="albumSummary"></div>
+          <button id="wardrobeOpen" class="btn btn-secondary" onclick="switchPanel('wardrobe')"></button>
         </section>
 
         <!-- == Cats Panel == -->
@@ -109,6 +111,11 @@
         <section id="panel-shop" class="panel">
           <h2>🛒 Shop</h2>
           <div id="shopContent"></div>
+        </section>
+
+        <section id="panel-wardrobe" class="panel">
+          <h2 id="wardrobeTitle"></h2>
+          <div id="wardrobeContent"></div>
         </section>
 
         <!-- == Gacha Panel (cosmetic pulls, open rates + pity) == -->
@@ -231,6 +238,7 @@
   <script src="/js/catlife.js"></script>
   <script src="/js/daily.js"></script>
   <script src="/js/album.js"></script>
+  <script src="/js/wardrobe.js"></script>
   <script src="/js/achievements.js"></script>
   <script src="/js/leaderboard.js"></script>
   <script src="/js/main.js"></script>

@@ -325,5 +325,17 @@
   "album.calendar": "Album calendar: {zone}. This is your local zone from the first stamp; it stays fixed when you travel.",
   "album.history": "Previous albums",
   "album.earned": "Earned",
-  "album.missed": "Not earned"
+  "album.missed": "Not earned",
+  "wardrobe.title": "Wardrobe",
+  "wardrobe.skin": "Skins",
+  "wardrobe.outfit": "Outfits",
+  "wardrobe.effect": "Effects",
+  "wardrobe.default": "Default appearance",
+  "wardrobe.equip": "Equip",
+  "wardrobe.equipped": "Equipped",
+  "wardrobe.owned": "Owned",
+  "wardrobe.locked": "Not owned",
+  "wardrobe.source.shop": "Shop",
+  "wardrobe.source.gacha": "Gacha draw",
+  "wardrobe.source.album": "Monthly album {month}"
 }

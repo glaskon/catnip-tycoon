@@ -91,7 +91,7 @@ function initBackground() {
 // Cat Canvas - draw the clickable cat
 // ============================================================
 
-// Cat skins from the shop — fur/whisker/mouth palettes (last purchased wins)
+// Cat skins from the shop — fur/whisker/mouth palettes (selected in the wardrobe)
 const CAT_SKINS = {
   skin_orange:  { fur: '#f4a261', whisker: '#8b5e3c', mouth: '#6b4c3b', ear: '#f4a261' },
   skin_black:   { fur: '#2d3436', whisker: '#9aa5a8', mouth: '#8a9498', ear: '#2d3436' },
@@ -109,14 +109,13 @@ function drawCat() {
 
   ctx.clearRect(0, 0, w, h);
 
-  // Active cosmetics (last purchased wins)
-  let skin = CAT_SKINS.skin_orange;
-  if (typeof lastOwned === 'function') {
-    const skinId = lastOwned('skin_');
-    if (skinId && CAT_SKINS[skinId]) skin = CAT_SKINS[skinId];
-    else if (typeof albumSkinPalette === 'function') skin = albumSkinPalette(skinId) || skin;
+  // Explicit equipment leaves the default palette and geometry unchanged.
+  const skinId = game.equippedSkin;
+  let skin = CAT_SKINS[skinId] || CAT_SKINS.skin_orange;
+  if (skinId && !CAT_SKINS[skinId] && typeof albumSkinPalette === 'function') {
+    skin = albumSkinPalette(skinId) || skin;
   }
-  const activeOutfit = (typeof lastOwned === 'function') ? lastOwned('outfit_') : null;
+  const activeOutfit = game.equippedOutfit;
 
   // Draw a stylized cat face with emoji-like style using canvas primitives
   const cx = w / 2;
@@ -263,12 +262,10 @@ function drawCat() {
 
 function spawnParticles(x, y, amount) {
   let emojis = ['🐟', '🐠', '✨', '🐾'];
-  // Shop effects extend the click particle palette
-  if (typeof hasItem === 'function') {
-    if (hasItem('effect_sparkle')) emojis = emojis.concat(['✨', '🌟', '💫']);
-    if (hasItem('effect_rainbow')) emojis = emojis.concat(['🌈', '💜', '💛', '💚', '🐟']);
-    if (hasItem('effect_aurora')) emojis = emojis.concat(['🌌', '🔮', '💠', '❄️']); // gacha-exclusive (epic)
-  }
+  // Only the selected effect extends the unchanged default click palette.
+  if (game.equippedEffect === 'effect_sparkle') emojis = emojis.concat(['✨', '🌟', '💫']);
+  if (game.equippedEffect === 'effect_rainbow') emojis = emojis.concat(['🌈', '💜', '💛', '💚', '🐟']);
+  if (game.equippedEffect === 'effect_aurora') emojis = emojis.concat(['🌌', '🔮', '💠', '❄️']);
   const count = Math.min(5, Math.ceil(amount / 5));
 
   // Global cap on concurrent particles to avoid DOM bloat during rapid clicking
@@ -526,6 +523,7 @@ function render() {
   renderSaveStatus();
   if (typeof renderFirstCatGoal === 'function') renderFirstCatGoal();
   if (typeof renderAlbum === 'function') renderAlbum();
+  if (typeof renderWardrobe === 'function') renderWardrobe();
   if (typeof renderPrestigePanel === 'function') renderPrestigePanel();
 
   // Only render the currently active panel for performance

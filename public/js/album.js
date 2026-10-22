@@ -91,22 +91,14 @@ async function refreshAlbum() {
 
 function equipAlbumSkin(month) {
   if (!game.isReady || game.saveConflict || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return;
-  const id = albumSkinId(month);
-  if (!hasItem(id)) return;
-  // Reuse the shop's purchase-order selection instead of another saved field.
-  purchasedItems = purchasedItems.filter(item => item !== id);
-  purchasedItems.push(id);
-  savePurchasedItems();
-  saveGame();
-  if (typeof drawCat === 'function') drawCat();
-  renderAlbum();
+  equipCosmetic('skin', albumSkinId(month));
 }
 
 function albumRewardHTML(month, owned) {
   const palette = albumSkinPalette(albumSkinId(month));
   if (!palette) return '';
   return `<span class="album-swatch" style="background:${palette.fur}" aria-hidden="true">🐈</span>
-    ${albumSkinName(month)}${owned ? ` <button class="btn btn-secondary btn-sm" onclick="equipAlbumSkin('${month}')">${i18n.t('album.equip')}</button>` : ''}`;
+    ${albumSkinName(month)}${owned ? ` <button class="btn btn-secondary btn-sm" onclick="equipAlbumSkin('${month}')">${i18n.t(game.equippedSkin === albumSkinId(month) ? 'wardrobe.equipped' : 'album.equip')}</button>` : ''}`;
 }
 
 function renderAlbum() {
