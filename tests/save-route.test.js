@@ -204,6 +204,28 @@ function albumAt(day, stamps = 1, history = {}) {
     lastStampAt: Date.parse(day + 'T12:00:00Z'), history };
 }
 
+for (const stamps of [4, 10]) {
+  test(`guest import persists ${stamps} stamps, history and the rest of the guest progress`, async () => {
+    const r = route();
+    for (const user of [1, 2, 3]) { // empty save, explicit null album and no save row
+      if (user === 2) r.saves.get(user).game_state.album = null;
+      const id = `album-guest-${user}`;
+      const state = { fish: 4242, cats: [{ id: 'tabby', count: 3 }], totalCatsBought: 3,
+        guestMigrationId: id, album: albumAt('2026-10-22', stamps, { '2026-09': 10 }) };
+      const result = await r.request(user, state, 0, id);
+      assert.equal(result.code, 200);
+      assert.equal(result.body.revision, 1);
+      const stored = structuredClone(r.saves.get(user));
+      assert.deepEqual(stored, { game_state: { ...state, saveOwnerId: String(user) }, revision: 1 });
+      assert.equal(r.receipts.get(id), user);
+      const retry = await r.request(user, { ...state, fish: 9999 }, 0, id);
+      assert.equal(retry.code, 200);
+      assert.equal(retry.body.already_migrated, true);
+      assert.deepEqual(r.saves.get(user), stored);
+    }
+  });
+}
+
 test('new account POST with a full state and ten stamps returns 400 without persisting', async () => {
   const r = route(Date.parse('2026-10-22T12:00:00Z'));
   const state = JSON.parse(JSON.stringify(createGame().buildSaveState()));
@@ -254,7 +276,7 @@ test('month rollover accepts one stamp and archives only the saved month; five s
   assert.equal((await r.request(1, { album: previous }, 8)).code, 400);
 });
 
-test('history cannot be invented, modified or removed, including during rollover or guest import', async () => {
+test('stored history cannot be invented, modified or removed, including during rollover', async () => {
   const r = route();
   const album = albumAt('2026-10-31', 2, { '2026-09': 3 });
   r.saves.set(1, { game_state: { album }, revision: 0 });
@@ -269,8 +291,7 @@ test('history cannot be invented, modified or removed, including during rollover
     assert.equal((await r.request(1, { album: value })).code, 400);
     assert.deepEqual(r.saves.get(1).game_state.album, album);
   }
-  assert.equal((await r.request(2, { album: albumAt('2026-10-22', 1, { '2026-09': 10 }),
-    guestMigrationId: 'invented-history' }, 0, 'invented-history')).code, 400);
+  assert.equal((await r.request(2, { album: albumAt('2026-10-22', 1, { '2026-09': 10 }) })).code, 400);
   assert.equal(r.receipts.size, 0);
 });
 
@@ -308,13 +329,46 @@ test('normal saves and guest imports without albums still work and cannot erase 
   assert.equal((await r.request(1, { album: { ...album, stamps: 2 } }, 4)).code, 400);
 });
 
-test('guest import cannot bypass the new-account stamp limit or consume a receipt on rejection', async () => {
+test('malformed guest albums cannot persist progress or consume a receipt; corrected import succeeds', async () => {
   const r = route();
-  const state = { fish: 42, guestMigrationId: 'bad-album', album: albumAt('2026-10-22', 10) };
-  assert.equal((await r.request(1, state, 0, 'bad-album')).code, 400);
-  assert.equal(r.receipts.size, 0);
+  const album = albumAt('2026-10-22', 4, { '2026-09': 10 });
+  const state = { fish: 42, guestMigrationId: 'bad-album', album };
+  const before = structuredClone(r.saves.get(1));
+  for (const invalid of [
+    { ...album, month: '2026-09' }, { ...album, timeZone: null },
+    ...[0, 11, 1.5].map(stamps => ({ ...album, stamps })),
+    { ...album, history: { '2026-10': 10 } }, { ...album, history: { '2026-11': 10 } },
+  ]) {
+    assert.equal((await r.request(1, { ...state, album: invalid }, 0, 'bad-album')).code, 400);
+    assert.equal(r.receipts.size, 0);
+    assert.deepEqual(r.saves.get(1), before);
+  }
+  assert.equal((await r.request(1, state, 0, 'bad-album')).code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
+});
+
+test('guest migration metadata alone cannot bypass the new-account stamp limit', async () => {
+  const r = route();
+  const state = { fish: 42, guestMigrationId: 'not-an-import', album: albumAt('2026-10-22', 10) };
+  assert.equal((await r.request(1, state)).code, 400);
   assert.equal(r.saves.get(1).revision, 0);
-  assert.equal((await r.request(1, { ...state, album: albumAt('2026-10-22') }, 0, 'bad-album')).code, 200);
+  assert.equal(r.receipts.size, 0);
+});
+
+test('imported albums keep daily progress and immutable history checks on subsequent saves', async () => {
+  const r = route(Date.parse('2026-10-22T12:00:00Z'));
+  const album = albumAt('2026-10-22', 4, { '2026-09': 10 });
+  assert.equal((await r.request(1, { album, guestMigrationId: 'daily-album' }, 0, 'daily-album')).code, 200);
+  assert.equal((await r.request(1, { album: { ...album, stamps: 5 } }, 1)).code, 400);
+  const next = albumAt('2026-10-23', 5, album.history);
+  assert.equal((await r.request(1, { album: next }, 1)).code, 400);
+  r.setNow(next.lastStampAt);
+  assert.equal((await r.request(1, { album: next }, 1)).code, 200);
+  const stored = structuredClone(r.saves.get(1));
+  assert.equal((await r.request(1, { album: { ...next, history: { ...next.history, '2026-08': 10 } } }, 2)).code, 400);
+  assert.equal((await r.request(1, { album: { ...next, stamps: 10 }, guestMigrationId: 'another-import' }, 2, 'another-import')).code, 409);
+  assert.deepEqual(r.saves.get(1), stored);
+  assert.equal(r.receipts.size, 1);
 });
 
 test('backdated requests cannot simulate elapsed days against an unchanged server clock', async () => {

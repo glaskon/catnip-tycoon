@@ -200,9 +200,12 @@ function validateState(s) {
 
 // Structural validation runs first. Progress is checked against the locked
 // account snapshot so concurrent requests cannot award the same day twice.
-function validateAlbumProgress(album, previous, now = Date.now()) {
+function validateAlbumProgress(album, previous, isGuestImport = false, now = Date.now()) {
   // Older clients may omit the album. The route retains the stored high-water mark.
   if (!album) return true;
+  // A one-time guest import may already span multiple days and months.
+  // Its structure was validated before the transaction; stored albums still use all progress checks.
+  if (!previous && isGuestImport) return true;
   if (album.lastStampAt > now + 5 * 60 * 1000) return false;
   if (!previous) return album.stamps <= 1 && Object.keys(album.history).length === 0;
   if (album.month < previous.month || album.timeZone !== previous.timeZone ||
@@ -274,7 +277,7 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(409).json({ error: 'Save changed; reload before saving', code: 'SAVE_CONFLICT' });
     }
     const previousAlbum = current && current.game_state.album;
-    if (!validateAlbumProgress(game_state.album, previousAlbum)) {
+    if (!validateAlbumProgress(game_state.album, previousAlbum, !!migration_id)) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid album progress' });
     }
