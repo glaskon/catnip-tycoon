@@ -1,6 +1,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createGame } = require('./game-harness');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
 
 const NOW = 1800000000000;
 function setup() {
@@ -68,10 +71,10 @@ test('R₀ shares permanent cat calculations and excludes prestige, pet and boos
   assert.equal(c.getBaseFishRate(), 33);
   assert.ok(c.game.fishPerSecond > 30);
   // The existing click booster still affects the base 1, not R₀.
-  assert.equal(c.calculateClickValue(), 7.17);
+  assert.equal(c.calculateClickValue(), 2150); // Round (7 + 0.16665) × 300 once.
 });
 
-test('live and offline passive income retain the original cat and autoclicker values', () => {
+test('live and offline income share prestige-scaled autoclicks and unchanged cat production', () => {
   const c = setup();
   c.game.cats[0].count = 10;
   for (const id of ['karma', 'buda', 'megakarma', 'catnipmastery', 'autoclicker', 'miska', 'luckypaw']) own(c, id);
@@ -84,19 +87,19 @@ test('live and offline passive income retain the original cat and autoclicker va
   c.applyBoost('click', 3, 30000);
   c.recalcFPS();
   close(c.game.fishPerSecond, 4158);
-  assert.equal(c.calculateClickValue('autoclicker'), 15);
-  assert.equal(c.calculateClickValue(), 16.9);
-  close(c.getFishIncomeRate(), 8346);
+  assert.equal(c.calculateClickValue('autoclicker'), 31.5);
+  assert.equal(c.calculateClickValue(), 35.48); // Round the full raw value ×2.1 at the end.
+  close(c.getFishIncomeRate(), 8379);
   c.game.isReady = true;
   c.game.lastTick = NOW - 1000;
   c.gameLoop();
-  close(c.game.fish, 8346);
+  close(c.game.fish, 8379);
   const state = c.buildSaveState();
   state.savedAt = NOW - 1000;
   const offline = setup();
   offline.catLifeProductionMultiplier = () => 1.1;
   offline.restoreWithOffline(state);
-  close(offline.game.fish - state.fish, 8346);
+  close(offline.game.fish - state.fish, 8379);
 });
 
 test('legacy saves keep exact click behavior, base fishPerClick and boosts through migration and reload', () => {
@@ -169,4 +172,81 @@ test('purchase previews include scaling gains without feeding them into passive 
   assert.equal(c.buyUpgrade(index), true);
   assert.equal(c.calculateClickValue(), preview.after.click);
   assert.equal(c.getFishIncomeRate(), preview.after.fish);
+});
+
+test('five manual clicks per second keep the same income share at prestige 0, 20, 100 and 200', () => {
+  const c = setup();
+  c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
+  own(c, 'miska');
+  const shares = [];
+  for (const [count, expectedClick] of [[0, 12502], [20, 27504.4], [100, 3750600], [200, 5000800]]) {
+    c.game.prestigeCount = count;
+    c.recalcFPS();
+    assert.equal(c.calculateClickValue(), expectedClick);
+    const active = 5 * c.calculateClickValue();
+    const share = 100 * active / (c.getFishIncomeRate() + active);
+    assert.ok(share >= 2 && share <= 8, `count=${count}: ${share}%`);
+    shares.push(share);
+  }
+  for (const share of shares) close(share, shares[0]);
+  c.game.prestigeMultiplier = 3;
+  c.recalcFPS();
+  assert.equal(c.calculateClickValue(), 15002400);
+  const active = 5 * c.calculateClickValue();
+  close(100 * active / (c.getFishIncomeRate() + active), shares[0]);
+});
+
+test('prestige scales bowl, Lucky Paw and click boosts once without feeding back into R₀', () => {
+  const c = setup();
+  c.game.cats[0].count = 2000;
+  for (const id of ['miska', 'luckypaw', 'autoclicker']) own(c, id);
+  own(c, 'fishclick', 3);
+  c.applyBoost('click', 5, 30000);
+  assert.equal(c.getBaseFishRate(), 1204); // 1000 cats/s + 4 base click + 200 Lucky Paw
+  const manual = Math.round(((5 + 3 + 0.005 * 1204 * 1.015) * 2 + 200) * 100) / 100;
+  assert.equal(c.calculateClickValue(), manual); // Exact legacy result at prestige 0.
+  assert.equal(c.calculateClickValue('autoclicker'), 216);
+  c.game.prestigeCount = 200;
+  c.game.prestigeMultiplier = 3;
+  assert.equal(c.getBaseFishRate(), 1204);
+  assert.equal(c.calculateClickValue(), 273864.72);
+  assert.equal(c.calculateClickValue('autoclicker'), 259200);
+  c.recomputeBoostedValues(NOW + 30001, true);
+  assert.equal(c.calculateClickValue(), 264264.72);
+  assert.equal(c.calculateClickValue('autoclicker'), 249600);
+});
+
+test('happy pet keeps its production bonus without duplicating prestige on clicks', () => {
+  const c = setup();
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../public/js/catlife.js'), 'utf8'), c);
+  c.game.prestigeCount = 200;
+  c.game.cats.find(cat => cat.id === 'kotfeniks').count = 1;
+  own(c, 'miska');
+  c.game.catlife = { hunger: 100, lastUpdate: NOW, fedCount: 0 };
+  c.recalcFPS();
+  assert.equal(c.game.fishPerSecond, 550000000);
+  assert.equal(c.calculateClickValue(), 5000800);
+  const active = 5 * c.calculateClickValue();
+  assert.ok(100 * active / (c.getFishIncomeRate() + active) >= 2);
+  c.game.catlife.hunger = 0;
+  c.recalcFPS();
+  assert.equal(c.game.fishPerSecond, 500000000);
+  assert.equal(c.calculateClickValue(), 5000800);
+});
+
+test('manual click pays the prestige-scaled value and critical multiplier exactly once', () => {
+  const c = setup();
+  c.game.prestigeCount = 200;
+  c.game.prestigeMultiplier = 3;
+  c.game.cats[0].count = 2000;
+  own(c, 'miska');
+  assert.equal(c.calculateClickValue(), 14400);
+  c.clickCat();
+  assert.equal(c.game.fish, 14400);
+  own(c, 'clickcrit');
+  vm.runInContext('Math.random = () => 0.05', c);
+  c.sound.crit = () => {};
+  c.screenShake = () => {};
+  c.clickCat();
+  assert.equal(c.game.fish, 158400);
 });

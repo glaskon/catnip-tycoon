@@ -221,7 +221,7 @@ function getBaseCatProduction() {
   return base;
 }
 
-// Permanent prestige factors shared by production and the reset receipt.
+// Permanent prestige factors shared by production, clicks and the reset receipt.
 function getPrestigeFishMultiplier(count = game.prestigeCount, multiplier = game.prestigeMultiplier) {
   return multiplier * (count >= 5 ? 2 : 1) * (1 + Math.floor(count / 10) * 0.05) * (count >= 100 ? 100 : 1);
 }
@@ -273,7 +273,7 @@ function getCatCost(catIndex) {
 // ============================================================
 
 // R₀ excludes prestige, pet, temporary boosts and the bowl. The autoclicker
-// branch cannot call R₀ again: its passive output retains the original formula.
+// branch cannot call R₀ again and must stay independent of prestige.
 function getBaseFishRate() {
   return getBaseCatProduction() + (hasUpgrade('autoclicker') ? calculateClickValue('baseAutoclicker') : 0);
 }
@@ -295,6 +295,10 @@ function calculateClickValue(mode = 'manual') {
     const totalCats = game.cats.reduce((sum, c) => sum + c.count, 0);
     clickValue += totalCats * 0.1;
   }
+
+  // Scale actual clicks once; the unscaled autoclicker contribution to R₀
+  // must not feed this multiplier back into manual production scaling.
+  if (mode !== 'baseAutoclicker') clickValue *= getPrestigeFishMultiplier();
 
   // Preserve legacy rounding when no scaling applies; avoid 1.025 → 1.02
   // from binary floating point on the new manual scaling path.
