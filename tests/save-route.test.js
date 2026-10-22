@@ -4,27 +4,33 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { createGame } = require('./game-harness');
+const { validateAlbumState } = require('../public/js/album-state');
 
 // Exercise the actual route and validator. The transactional store is a test
 // double; PostgreSQL locking and DDL still need an integration environment.
 function route(now = Date.parse('2026-11-01T12:00:00Z')) {
   const saves = new Map([[1, { game_state: {}, revision: 0 }], [2, { game_state: {}, revision: 0 }]]);
   const receipts = new Map();
+  const guestAlbums = new Map(); // device_id -> {time_zone, month, stamps, last_stamp_day, history}
   let post, before, releases = 0;
   const client = {
     release() { releases++; },
     async query(sql, args = []) {
-      if (sql === 'BEGIN') { before = structuredClone({ saves, receipts }); return { rows: [] }; }
+      if (sql === 'BEGIN') { before = structuredClone({ saves, receipts, guestAlbums }); return { rows: [] }; }
       if (sql === 'COMMIT') return { rows: [] };
       if (sql === 'ROLLBACK') {
-        saves.clear(); receipts.clear();
+        saves.clear(); receipts.clear(); guestAlbums.clear();
         before.saves.forEach((v, k) => saves.set(k, v));
         before.receipts.forEach((v, k) => receipts.set(k, v));
+        before.guestAlbums.forEach((v, k) => guestAlbums.set(k, v));
         return { rows: [] };
       }
       if (sql.startsWith('SELECT id FROM users')) return { rows: [{ id: args[0] }] };
       if (sql.startsWith('SELECT game_state')) return { rows: saves.has(args[0]) ? [structuredClone(saves.get(args[0]))] : [] };
       if (sql.startsWith('SELECT user_id FROM guest_imports')) return { rows: receipts.has(args[0]) ? [{ user_id: receipts.get(args[0]) }] : [] };
+      if (sql.startsWith('SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums')) {
+        return { rows: guestAlbums.has(args[0]) ? [structuredClone(guestAlbums.get(args[0]))] : [] };
+      }
       if (sql.startsWith('INSERT INTO guest_imports')) {
         if (receipts.has(args[0])) return { rows: [] };
         receipts.set(args[0], args[1]);
@@ -49,15 +55,21 @@ function route(now = Date.parse('2026-11-01T12:00:00Z')) {
       if (name === '../../public/js/save-progress') return require('../public/js/save-progress');
       if (name === '../../public/js/cosmetic-state') return require('../public/js/cosmetic-state');
       if (name === '../../public/js/album-state') return require('../public/js/album-state');
+      if (name === '../album-logic') return require('../server/album-logic');
       throw new Error('Unexpected dependency');
     },
   });
   return {
-    saves, receipts,
+    saves, receipts, guestAlbums,
     setNow(value) { now = value; },
-    async request(user, state, revision = 0, id) {
+    // Seeds a guest's server-owned album, as if they had stamped it before registering.
+    seedGuestAlbum(deviceId, album) {
+      guestAlbums.set(deviceId, { time_zone: album.timeZone, month: album.month, stamps: album.stamps,
+        last_stamp_day: album.lastDay, history: album.history });
+    },
+    async request(user, state, revision = 0, id, deviceId) {
       const res = { code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } };
-      await post({ user: { id: user }, body: { game_state: structuredClone(state), expected_revision: revision, migration_id: id } }, res);
+      await post({ user: { id: user }, body: { game_state: structuredClone(state), expected_revision: revision, migration_id: id, device_id: deviceId } }, res);
       return res;
     },
     get releases() { return releases; },
@@ -142,7 +154,7 @@ test('first-cat reward marker survives the save route; malformed markers are rej
   }
 });
 
-test('stored album history and monthly skin persist; a first guest stamp can be imported', async () => {
+test('stored album history and monthly skin persist on ordinary saves (not from an import payload)', async () => {
   const c = createGame();
   const album = { timeZone: 'Europe/Warsaw', month: '2026-11', stamps: 1,
     lastDay: '2026-11-01', lastStampAt: Date.parse('2026-11-01T12:00:00Z'), history: { '2026-10': 10 } };
@@ -157,9 +169,21 @@ test('stored album history and monthly skin persist; a first guest stamp can be 
   const clone = createGame();
   clone.applyGameState(stored);
   assert.deepEqual(JSON.parse(JSON.stringify(clone.buildSaveState().album)), album);
-  // A guest with only a first stamp still has real progress to import.
-  const onlyStamp = { album: { ...album, history: {} }, guestMigrationId: 'stamp-guest' };
-  assert.equal((await r.request(2, onlyStamp, 0, 'stamp-guest')).code, 200);
+  // A claimed album in the import payload alone is not real progress — decision 6B,
+  // only a verified device record counts. No other progress means no import either.
+  const fakeStamp = { album: { ...album, history: {} }, guestMigrationId: 'stamp-guest' };
+  assert.equal((await r.request(2, fakeStamp, 0, 'stamp-guest')).code, 400);
+  assert.equal(r.receipts.size, 0);
+  // The same guest, but with a real server-side stamp for their device, imports fine
+  // and the transplanted album (not the forged payload) is what gets stored.
+  r.seedGuestAlbum('stamp-device', { ...album, history: {} });
+  const real = await r.request(3, { ...fakeStamp, guestMigrationId: 'stamp-guest-2' }, 0, 'stamp-guest-2', 'stamp-device');
+  assert.equal(real.code, 200);
+  const transplanted = r.saves.get(3).game_state.album;
+  // lastStampAt is reconstructed from the stored day, not copied byte-for-byte.
+  const { lastStampAt, ...rest } = transplanted;
+  assert.deepEqual(rest, { timeZone: 'Europe/Warsaw', month: '2026-11', stamps: 1, lastDay: '2026-11-01', history: {} });
+  assert.equal(validateAlbumState(transplanted), true);
 });
 
 test('album validator rejects malformed calendars, stamps, timestamps and history; local restore is safe', async () => {
@@ -206,24 +230,44 @@ function albumAt(day, stamps = 1, history = {}) {
 }
 
 for (const stamps of [4, 10]) {
-  test(`guest import persists ${stamps} stamps, history and the rest of the guest progress`, async () => {
+  // The whole point of decision 6B: the ct_verify_album_bypass.py scenario.
+  // A fresh account importing a forged N-stamp album (no matching device
+  // record) must never see those stamps persisted, regardless of N.
+  test(`guest import discards a forged ${stamps}-stamp album but keeps the rest of the guest progress`, async () => {
     const r = route();
     for (const user of [1, 2, 3]) { // empty save, explicit null album and no save row
       if (user === 2) r.saves.get(user).game_state.album = null;
       const id = `album-guest-${user}`;
+      const forged = albumAt('2026-10-22', stamps, { '2026-09': 10 });
       const state = { fish: 4242, cats: [{ id: 'tabby', count: 3 }], totalCatsBought: 3,
-        guestMigrationId: id, album: albumAt('2026-10-22', stamps, { '2026-09': 10 }) };
+        guestMigrationId: id, album: forged };
       const result = await r.request(user, state, 0, id);
       assert.equal(result.code, 200);
       assert.equal(result.body.revision, 1);
       const stored = structuredClone(r.saves.get(user));
-      assert.deepEqual(stored, { game_state: { ...state, saveOwnerId: String(user) }, revision: 1 });
+      // The claimed album never reaches storage — only a verified device record could.
+      assert.deepEqual(stored, { game_state: { ...state, album: null, saveOwnerId: String(user) }, revision: 1 });
       assert.equal(r.receipts.get(id), user);
       const retry = await r.request(user, { ...state, fish: 9999 }, 0, id);
       assert.equal(retry.code, 200);
       assert.equal(retry.body.already_migrated, true);
       assert.deepEqual(r.saves.get(user), stored);
     }
+  });
+
+  // A genuine device record with the same stamp count DOES transplant —
+  // the fix discards the payload, not legitimately earned guest progress.
+  test(`guest import transplants a real ${stamps}-stamp device album instead of trusting the payload`, async () => {
+    const r = route();
+    const deviceId = `device-${stamps}`;
+    const real = albumAt('2026-10-22', stamps, { '2026-09': 10 });
+    r.seedGuestAlbum(deviceId, real);
+    const id = `album-guest-real-${stamps}`;
+    // Whatever the client claims is irrelevant; only the device record counts.
+    const state = { fish: 4242, guestMigrationId: id, album: albumAt('2026-10-22', 1) };
+    const result = await r.request(1, state, 0, id, deviceId);
+    assert.equal(result.code, 200);
+    assert.deepEqual(r.saves.get(1).game_state.album, real);
   });
 }
 
@@ -330,7 +374,7 @@ test('normal saves and guest imports without albums still work and cannot erase 
   assert.equal((await r.request(1, { album: { ...album, stamps: 2 } }, 4)).code, 400);
 });
 
-test('malformed guest albums cannot persist progress or consume a receipt; corrected import succeeds', async () => {
+test('malformed album shapes are rejected before any import check runs; a well-shaped but unverified one still imports with no album', async () => {
   const r = route();
   const album = albumAt('2026-10-22', 4, { '2026-09': 10 });
   const state = { fish: 42, guestMigrationId: 'bad-album', album };
@@ -344,8 +388,10 @@ test('malformed guest albums cannot persist progress or consume a receipt; corre
     assert.equal(r.receipts.size, 0);
     assert.deepEqual(r.saves.get(1), before);
   }
+  // Well-shaped, but still only the client's claim — decision 6B discards it.
+  // The import itself succeeds (fish alone is real progress); the album does not.
   assert.equal((await r.request(1, state, 0, 'bad-album')).code, 200);
-  assert.deepEqual(r.saves.get(1).game_state.album, album);
+  assert.equal(r.saves.get(1).game_state.album, null);
 });
 
 test('guest migration metadata alone cannot bypass the new-account stamp limit', async () => {
@@ -359,7 +405,10 @@ test('guest migration metadata alone cannot bypass the new-account stamp limit',
 test('imported albums keep daily progress and immutable history checks on subsequent saves', async () => {
   const r = route(Date.parse('2026-10-22T12:00:00Z'));
   const album = albumAt('2026-10-22', 4, { '2026-09': 10 });
-  assert.equal((await r.request(1, { album, guestMigrationId: 'daily-album' }, 0, 'daily-album')).code, 200);
+  const deviceId = 'daily-device';
+  r.seedGuestAlbum(deviceId, album);
+  assert.equal((await r.request(1, { guestMigrationId: 'daily-album' }, 0, 'daily-album', deviceId)).code, 200);
+  assert.deepEqual(r.saves.get(1).game_state.album, album);
   assert.equal((await r.request(1, { album: { ...album, stamps: 5 } }, 1)).code, 400);
   const next = albumAt('2026-10-23', 5, album.history);
   assert.equal((await r.request(1, { album: next }, 1)).code, 400);

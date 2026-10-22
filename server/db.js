@@ -45,6 +45,19 @@ async function initDB() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      -- Server-owned album for guests (keyed by their device id, decision 6B).
+      -- Logged-in players keep their album inside saves.game_state; this table
+      -- exists only for identities without an account yet.
+      CREATE TABLE IF NOT EXISTS guest_albums (
+        device_id VARCHAR(100) PRIMARY KEY,
+        time_zone VARCHAR(100) NOT NULL,
+        month VARCHAR(7) NOT NULL,
+        stamps INTEGER NOT NULL DEFAULT 0,
+        last_stamp_day VARCHAR(10) NOT NULL DEFAULT '',
+        history JSONB NOT NULL DEFAULT '{}',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       -- Store transactions (Stripe)
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,

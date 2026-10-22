@@ -7,6 +7,7 @@ const { authMiddleware } = require('../auth');
 const { hasRealProgress } = require('../../public/js/save-progress');
 const { validateAlbumState } = require('../../public/js/album-state');
 const { validateEquippedCosmetic } = require('../../public/js/cosmetic-state');
+const { noonEpochForDay } = require('../album-logic');
 
 /**
  * GET /api/save
@@ -207,12 +208,11 @@ function validateState(s) {
 
 // Structural validation runs first. Progress is checked against the locked
 // account snapshot so concurrent requests cannot award the same day twice.
-function validateAlbumProgress(album, previous, isGuestImport = false, now = Date.now()) {
+// A guest import never reaches this function: its album is always replaced
+// by loadGuestAlbumForTransplant() below, never by the client's payload.
+function validateAlbumProgress(album, previous, now = Date.now()) {
   // Older clients may omit the album. The route retains the stored high-water mark.
   if (!album) return true;
-  // A one-time guest import may already span multiple days and months.
-  // Its structure was validated before the transaction; stored albums still use all progress checks.
-  if (!previous && isGuestImport) return true;
   if (album.lastStampAt > now + 5 * 60 * 1000) return false;
   if (!previous) return album.stamps <= 1 && Object.keys(album.history).length === 0;
   if (album.month < previous.month || album.timeZone !== previous.timeZone ||
@@ -239,6 +239,25 @@ function validateAlbumProgress(album, previous, isGuestImport = false, now = Dat
     album.lastStampAt > previous.lastStampAt;
 }
 
+// The only legitimate source of a guest's album is their own server record
+// (decision 6B) — never the import payload, which anyone can forge. A device
+// with no stamping history yet (or none given) imports with no album at all;
+// see the "ważna konsekwencja" note in the stage-6B writeup: an unverifiable
+// local album is lost on import rather than trusted.
+async function loadGuestAlbumForTransplant(client, deviceId, now = Date.now()) {
+  if (!deviceId) return null;
+  const result = await client.query(
+    'SELECT time_zone, month, stamps, last_stamp_day, history FROM guest_albums WHERE device_id = $1', [deviceId]);
+  if (!result.rows.length) return null;
+  const row = result.rows[0];
+  if (!row.stamps) return null;
+  return {
+    timeZone: row.time_zone, month: row.month, stamps: row.stamps, lastDay: row.last_stamp_day,
+    lastStampAt: Math.min(noonEpochForDay(row.last_stamp_day, row.time_zone), now),
+    history: row.history,
+  };
+}
+
 /**
  * POST /api/save
  * Save/update the current user's game state in the database.
@@ -246,9 +265,10 @@ function validateAlbumProgress(album, previous, isGuestImport = false, now = Dat
  * Requires valid JWT.
  */
 router.post('/', authMiddleware, async (req, res) => {
-  const { game_state, expected_revision, migration_id } = req.body;
+  const { game_state, expected_revision, migration_id, device_id } = req.body;
   if (!validateState(game_state) || !Number.isInteger(expected_revision) || expected_revision < 0 ||
-      (migration_id !== undefined && !isId(migration_id))) {
+      (migration_id !== undefined && !isId(migration_id)) ||
+      (device_id !== undefined && device_id !== null && !isId(device_id))) {
     return res.status(400).json({ error: 'Invalid game_state or revision' });
   }
 
@@ -270,6 +290,10 @@ router.post('/', authMiddleware, async (req, res) => {
         }
         return res.json({ success: true, already_migrated: true, game_state: current.game_state, revision });
       }
+      // The album never comes from this payload — only a verified server
+      // record for this device may seed it. A forged or absent device record
+      // simply imports with no album (see loadGuestAlbumForTransplant above).
+      game_state.album = await loadGuestAlbumForTransplant(client, device_id);
       if (current && (hasRealProgress(current.game_state) || current.game_state.guestMigrationId)) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'Account already has progress', code: 'SAVE_CONFLICT' });
@@ -283,12 +307,16 @@ router.post('/', authMiddleware, async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Save changed; reload before saving', code: 'SAVE_CONFLICT' });
     }
-    const previousAlbum = current && current.game_state.album;
-    if (!validateAlbumProgress(game_state.album, previousAlbum, !!migration_id)) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Invalid album progress' });
+    // A guest import's album was already replaced above with a trusted server
+    // value (or null); it is never re-validated against the client's payload.
+    if (!migration_id) {
+      const previousAlbum = current && current.game_state.album;
+      if (!validateAlbumProgress(game_state.album, previousAlbum)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid album progress' });
+      }
+      if (!game_state.album && previousAlbum) game_state.album = previousAlbum;
     }
-    if (!game_state.album && previousAlbum) game_state.album = previousAlbum;
     if (migration_id) {
       const inserted = await client.query(
         'INSERT INTO guest_imports (migration_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING migration_id',

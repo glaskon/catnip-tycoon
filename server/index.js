@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const saveRoutes = require('./routes/save');
 const adminRoutes = require('./routes/admin');
 const leaderboardRoutes = require('./routes/leaderboard');
+const albumRoutes = require('./routes/album');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -55,6 +56,7 @@ app.use('/api/auth', authRoutes);     // Registration, login, user info
 app.use('/api/save', saveRoutes);     // Save and load game state
 app.use('/api/admin', adminRoutes);   // Admin panel: speed, currency, user management
 app.use('/api/leaderboard', leaderboardRoutes); // Public leaderboard
+app.use('/api/album', albumRoutes);   // Server-owned monthly stamp album (accounts and guests)
 
 // --- Health check endpoint ---
 app.get('/api/health', (req, res) => {
